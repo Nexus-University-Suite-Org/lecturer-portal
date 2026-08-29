@@ -36,4 +36,10 @@ public class Submission {
 
     @Column(length = 2000)
     private String feedback;
+
+    @Column(length = 500)
+    private String fileUrl;
+
+    @Column(length = 500)
+    private String fileName;
 }

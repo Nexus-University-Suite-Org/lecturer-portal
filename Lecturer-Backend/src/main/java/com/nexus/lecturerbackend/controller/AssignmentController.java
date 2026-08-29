@@ -50,6 +50,8 @@ public class AssignmentController {
         a.setDueDate(req.dueDate());
         a.setTotalPoints(req.totalPoints());
         a.setStatus(req.status() == null ? "draft" : req.status());
+        if (req.instructionDocumentUrl() != null) a.setInstructionDocumentUrl(req.instructionDocumentUrl());
+        if (req.instructionDocumentName() != null) a.setInstructionDocumentName(req.instructionDocumentName());
         assignmentRepository.save(a);
         return ResponseEntity.ok(a);
     }
@@ -70,6 +72,8 @@ public class AssignmentController {
         if (req.courseId() != null) a.setCourseId(req.courseId());
         if (req.courseTitle() != null) a.setCourseTitle(req.courseTitle());
         if (req.courseCode() != null) a.setCourseCode(req.courseCode());
+        if (req.instructionDocumentUrl() != null) a.setInstructionDocumentUrl(req.instructionDocumentUrl());
+        if (req.instructionDocumentName() != null) a.setInstructionDocumentName(req.instructionDocumentName());
         assignmentRepository.save(a);
         return ResponseEntity.ok(a);
     }

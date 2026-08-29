@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBackend, postBackend, deleteBackend } from "@/lib/backendApi";
+import { getBackend, postBackend, deleteBackend, uploadAttachment } from "@/lib/backendApi";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Assignment {
@@ -258,7 +258,16 @@ export default function LecturerAssignments() {
     try {
       const course = courses.find((c) => c.id === selectedCourse);
 
-      const payload = {
+      let instructionDocUrl: string | undefined;
+      let instructionDocName: string | undefined;
+      if (formData.instructionDocument) {
+        setUploadingDocument(true);
+        const uploaded = await uploadAttachment(formData.instructionDocument);
+        instructionDocUrl = uploaded.url;
+        instructionDocName = formData.instructionDocument.name;
+      }
+
+      const payload: any = {
         lecturer_id: user.uid,
         course_id: selectedCourse,
         course_title: course?.title || "",
@@ -269,6 +278,10 @@ export default function LecturerAssignments() {
         total_points: formData.totalPoints,
         status: "draft",
       };
+      if (instructionDocUrl) {
+        payload.instruction_document_url = instructionDocUrl;
+        payload.instruction_document_name = instructionDocName;
+      }
 
       const created = await postBackend<any>("/api/assignments/", payload);
 
@@ -282,10 +295,8 @@ export default function LecturerAssignments() {
         totalStudents: 0,
         status: created.status || "draft",
         courseTitle: created.course_title || course?.title,
-        instructionDocumentUrl:
-          created.instruction_document_url || instructionDocUrl || undefined,
-        instructionDocumentName:
-          created.instruction_document_name || instructionDocName || undefined,
+        instructionDocumentUrl: created.instruction_document_url || instructionDocUrl,
+        instructionDocumentName: created.instruction_document_name || instructionDocName,
       };
       setAssignments((prev) => [...prev, newAssignment]);
       setFormData({
@@ -348,6 +359,8 @@ export default function LecturerAssignments() {
           student_id: s.student_id,
           assignment_id: s.assignment_id,
           content: s.content || "",
+          file_url: s.file_url || undefined,
+          file_name: s.file_name || undefined,
           status: s.status || "submitted",
           submitted_at: s.submitted_at,
           score: s.score,
@@ -429,7 +442,16 @@ export default function LecturerAssignments() {
     try {
       const course = courses.find((c) => c.id === editFormData.courseId);
 
-      const payload = {
+      let instructionDocUrl: string | undefined;
+      let instructionDocName: string | undefined;
+      if (editFormData.instructionDocument) {
+        setUploadingDocument(true);
+        const uploaded = await uploadAttachment(editFormData.instructionDocument);
+        instructionDocUrl = uploaded.url;
+        instructionDocName = editFormData.instructionDocument.name;
+      }
+
+      const payload: any = {
         title: editFormData.title,
         description: editFormData.description,
         due_date: new Date(editFormData.dueDate).toISOString(),
@@ -438,6 +460,10 @@ export default function LecturerAssignments() {
         course_title: course?.title || "",
         course_code: course?.code || "",
       };
+      if (instructionDocUrl) {
+        payload.instruction_document_url = instructionDocUrl;
+        payload.instruction_document_name = instructionDocName;
+      }
 
       await postBackend(`/api/assignments/${editing.id}/update/`, payload);
       const updated: Assignment = {
@@ -450,6 +476,8 @@ export default function LecturerAssignments() {
         totalStudents: editing.totalStudents,
         status: editing.status,
         courseTitle: course?.title,
+        instructionDocumentUrl: instructionDocUrl || editing.instructionDocumentUrl,
+        instructionDocumentName: instructionDocName || editing.instructionDocumentName,
       };
 
       setAssignments((prev) =>
@@ -1321,18 +1349,28 @@ export default function LecturerAssignments() {
                           </div>
                         )}
 
-                          {submission.file_url && (
-                          <div className="flex items-center gap-2">
-                            <UploadIcon className="h-4 w-4 text-gray-500" />
-                            <a
-                              href={submission.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:text-blue-800 underline"
-                            >
-                              {submission.file_name ||
-                                "Download submission file"}
-                            </a>
+                        {submission.file_url && (
+                          <div className="mt-3 space-y-2">
+                            {/\.(jpg|jpeg|png|gif|webp)$/i.test(submission.file_name || submission.file_url) ? (
+                              <div className="rounded-lg overflow-hidden border border-gray-200">
+                                <img
+                                  src={submission.file_url}
+                                  alt={submission.file_name || "Submitted file"}
+                                  className="max-w-full max-h-64 object-contain bg-gray-100"
+                                />
+                              </div>
+                            ) : null}
+                            <div className="flex items-center gap-2">
+                              <UploadIcon className="h-4 w-4 text-gray-500" />
+                              <a
+                                href={submission.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:text-blue-800 underline"
+                              >
+                                {submission.file_name || "Download submission file"}
+                              </a>
+                            </div>
                           </div>
                         )}
 
