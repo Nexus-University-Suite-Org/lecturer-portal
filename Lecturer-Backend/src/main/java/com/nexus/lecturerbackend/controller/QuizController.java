@@ -2,9 +2,11 @@ package com.nexus.lecturerbackend.controller;
 
 import com.nexus.lecturerbackend.dto.QuizActionRequest;
 import com.nexus.lecturerbackend.dto.QuizRequest;
+import com.nexus.lecturerbackend.model.Notification;
 import com.nexus.lecturerbackend.model.Quiz;
 import com.nexus.lecturerbackend.model.QuizAttempt;
 import com.nexus.lecturerbackend.model.QuizQuestion;
+import com.nexus.lecturerbackend.repository.NotificationRepository;
 import com.nexus.lecturerbackend.repository.QuizAttemptRepository;
 import com.nexus.lecturerbackend.repository.QuizQuestionRepository;
 import com.nexus.lecturerbackend.repository.QuizRepository;
@@ -32,13 +34,16 @@ public class QuizController {
     private final QuizRepository quizRepository;
     private final QuizQuestionRepository questionRepository;
     private final QuizAttemptRepository attemptRepository;
+    private final NotificationRepository notificationRepository;
 
     public QuizController(QuizRepository quizRepository,
                           QuizQuestionRepository questionRepository,
-                          QuizAttemptRepository attemptRepository) {
+                          QuizAttemptRepository attemptRepository,
+                          NotificationRepository notificationRepository) {
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.attemptRepository = attemptRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     @GetMapping("/quizzes/")
@@ -185,6 +190,18 @@ public class QuizController {
         attempt.setCompletedAt(LocalDateTime.now());
         attempt.setAnswers(serializeAnswers(answersRaw));
         attemptRepository.save(attempt);
+
+        // Create notification for the student
+        try {
+            Notification notification = new Notification();
+            notification.setUserId(studentId);
+            notification.setType(passed ? "success" : "grade");
+            notification.setTitle(passed ? "Quiz Passed!" : "Quiz Completed");
+            notification.setMessage("You scored " + percentage + "% on \"" + quiz.getTitle() + "\" (" + (int)totalScore + "/" + (int)maxPoints + ")");
+            notification.setLink("/results");
+            notification.setRelatedId(attempt.getId());
+            notificationRepository.save(notification);
+        } catch (Exception ignored) {}
 
         quiz.setTotalAttempts((quiz.getTotalAttempts() != null ? quiz.getTotalAttempts() : 0) + 1);
         List<QuizAttempt> allAttempts = attemptRepository.findByQuizIdOrderByIdAsc(id);
