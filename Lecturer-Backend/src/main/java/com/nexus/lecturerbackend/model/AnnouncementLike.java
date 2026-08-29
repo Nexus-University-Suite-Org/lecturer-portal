@@ -6,32 +6,29 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "enrollments")
+@Table(name = "announcement_likes", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"announcement_id", "student_id"})
+})
 @Getter
 @Setter
-public class Enrollment {
+public class AnnouncementLike {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long announcementId;
+
     private Long studentId;
 
-    private Long courseId;
+    @Column(length = 200)
+    private String studentName;
 
-    @Column(length = 50)
-    private String status = "pending";
-
-    @Column(length = 50)
-    private String paperType = "normal";
-
-    @Column(nullable = false)
-    private LocalDateTime enrolledAt = LocalDateTime.now();
-
-    private Long lecturerId;
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

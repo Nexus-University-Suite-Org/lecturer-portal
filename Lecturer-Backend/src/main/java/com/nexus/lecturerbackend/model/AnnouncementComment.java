@@ -11,27 +11,24 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "enrollments")
+@Table(name = "announcement_comments")
 @Getter
 @Setter
-public class Enrollment {
+public class AnnouncementComment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long announcementId;
+
     private Long studentId;
 
-    private Long courseId;
+    @Column(length = 200)
+    private String studentName;
 
-    @Column(length = 50)
-    private String status = "pending";
+    @Column(length = 2000)
+    private String content;
 
-    @Column(length = 50)
-    private String paperType = "normal";
-
-    @Column(nullable = false)
-    private LocalDateTime enrolledAt = LocalDateTime.now();
-
-    private Long lecturerId;
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

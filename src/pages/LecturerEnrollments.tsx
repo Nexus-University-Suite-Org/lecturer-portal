@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 import { LecturerBottomNav } from "@/components/layout/LecturerBottomNav";
-import { getBackend, postBackend } from "@/lib/backendApi";
+import { getBackend, postBackend, putBackend } from "@/lib/backendApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +26,7 @@ interface EnrollmentRow {
   enrolled_at: string;
   course_id: string;
   student_id: string;
+  paper_type: string;
   course?: {
     id: string;
     title: string;
@@ -144,23 +145,14 @@ export default function LecturerEnrollments() {
 
     setUpdatingId(id);
     try {
-      // Notify the student when their enrollment is reviewed
-      if (target.student_id) {
-        await postBackend(
-          "/api/notifications/",
-          {
-            user_id: target.student_id,
-            title:
-              status === "approved" ? "Enrollment approved" : "Enrollment update",
-            message:
-              status === "approved"
-                ? `Your enrollment for ${target.course?.code ?? "the course"} was approved.`
-                : `Your enrollment for ${target.course?.code ?? "the course"} was ${status}.`,
-            type: "info",
-            link: "/enrollment",
-          },
-        );
-      }
+      await putBackend(
+        `/api/enrollments/${id}/status`,
+        {
+          status,
+          lecturerId: Number(user!.uid),
+        },
+        true,
+      );
 
       setEnrollments((prev) =>
         prev.map((enrollment) =>
@@ -314,7 +306,7 @@ export default function LecturerEnrollments() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge
                               variant="outline"
                               className="font-mono text-xs"
@@ -323,6 +315,20 @@ export default function LecturerEnrollments() {
                             </Badge>
                             <Badge className="bg-primary/10 text-primary">
                               {enrollment.course?.credits ?? 0} credits
+                            </Badge>
+                            <Badge
+                              className={`text-xs border-0 ${
+                                (enrollment.paper_type || "normal") === "retake"
+                                  ? "bg-red-500/10 text-red-600"
+                                  : (enrollment.paper_type || "normal") === "missed"
+                                    ? "bg-amber-500/10 text-amber-600"
+                                    : (enrollment.paper_type || "normal") === "supplementary"
+                                      ? "bg-purple-500/10 text-purple-600"
+                                      : "bg-blue-500/10 text-blue-600"
+                              }`}
+                            >
+                              {(enrollment.paper_type || "normal").charAt(0).toUpperCase() +
+                                (enrollment.paper_type || "normal").slice(1)}
                             </Badge>
                           </div>
                           <p className="text-lg font-semibold mt-1">

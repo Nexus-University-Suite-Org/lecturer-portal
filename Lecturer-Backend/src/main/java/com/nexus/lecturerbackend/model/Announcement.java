@@ -30,6 +30,9 @@ public class Announcement {
 
     private Long authorId;
 
+    @Column(length = 200)
+    private String authorName;
+
     @Column(length = 20)
     private String priority = "normal";
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Megaphone,
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { LecturerBottomNav } from "@/components/layout/LecturerBottomNav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,8 +25,21 @@ interface Announcement {
   audience: string;
   views: number;
   likes: number;
-  comments: number;
+  commentsCount: number;
   priority: "high" | "normal" | "low";
+}
+
+interface EngagementData {
+  views: number;
+  likes: number;
+  comments_count: number;
+  has_liked: boolean;
+  comments: Array<{
+    id: number;
+    student_name: string;
+    content: string;
+    created_at: string;
+  }>;
 }
 
 const rise = {
@@ -38,31 +51,17 @@ const rise = {
   }),
 };
 
-interface StudentEngagement {
-  views: Array<{ student_id: string; student_name: string; viewed_at: string }>;
-  likes: Array<{
-    student_id: string;
-    student_name: string;
-    created_at: string;
-  }>;
-  comments: Array<{
-    student_id: string;
-    student_name: string;
-    content: string;
-    created_at: string;
-  }>;
-}
-
 export default function LecturerAnnouncements() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [engagementDetails, setEngagementDetails] =
-    useState<StudentEngagement | null>(null);
+  const [viewEngagement, setViewEngagement] = useState<EngagementData | null>(
+    null,
+  );
   const [loadingEngagement, setLoadingEngagement] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -86,7 +85,7 @@ export default function LecturerAnnouncements() {
         `/api/announcements/?author_id=${encodeURIComponent(user.uid)}`,
       );
 
-      const transformedAnnouncements = data.map((ann) => ({
+      const transformed = data.map((ann) => ({
         id: ann.id,
         title: ann.title,
         content: ann.content,
@@ -96,10 +95,32 @@ export default function LecturerAnnouncements() {
         audience: "All Students",
         views: 0,
         likes: 0,
-        comments: 0,
+        commentsCount: 0,
         priority: ann.priority || "normal",
       }));
-      setAnnouncements(transformedAnnouncements);
+      setAnnouncements(transformed);
+
+      for (const ann of transformed) {
+        try {
+          const eng = await getBackend<EngagementData>(
+            `/api/announcements/${ann.id}/engagement?role=lecturer`,
+          );
+          setAnnouncements((prev) =>
+            prev.map((a) =>
+              a.id === ann.id
+                ? {
+                    ...a,
+                    views: eng.views,
+                    likes: eng.likes,
+                    commentsCount: eng.comments_count,
+                  }
+                : a,
+            ),
+          );
+        } catch {
+          // keep defaults
+        }
+      }
     } catch (error) {
       console.error("Error fetching announcements:", error);
     } finally {
@@ -111,7 +132,7 @@ export default function LecturerAnnouncements() {
     totalAnnouncements: announcements.length,
     totalViews: announcements.reduce((acc, a) => acc + a.views, 0),
     totalLikes: announcements.reduce((acc, a) => acc + a.likes, 0),
-    totalComments: announcements.reduce((acc, a) => acc + a.comments, 0),
+    totalComments: announcements.reduce((acc, a) => acc + a.commentsCount, 0),
   };
 
   const getPriorityColor = (priority: string) => {
@@ -134,6 +155,7 @@ export default function LecturerAnnouncements() {
       const payload = {
         course_id: formData.course_id || "",
         author_id: user.uid,
+        author_name: profile?.full_name || user?.displayName || "",
         title: formData.title,
         content: formData.content,
         priority: formData.priority,
@@ -151,7 +173,7 @@ export default function LecturerAnnouncements() {
           audience: "All Students",
           views: 0,
           likes: 0,
-          comments: 0,
+          commentsCount: 0,
           priority: created.priority || "normal",
         },
         ...current,
@@ -175,13 +197,11 @@ export default function LecturerAnnouncements() {
   const fetchEngagementDetails = async (announcementId: string) => {
     try {
       setLoadingEngagement(true);
-      setEngagementDetails({
-        views: [],
-        likes: [],
-        comments: [],
-      });
-      // Engagement data is not available in the current backend.
-      // This placeholder allows the details panel to render safely.
+      setViewEngagement(null);
+      const data = await getBackend<EngagementData>(
+        `/api/announcements/${announcementId}/engagement?role=lecturer`,
+      );
+      setViewEngagement(data);
     } catch (error) {
       console.error("Error fetching engagement details:", error);
     } finally {
@@ -341,7 +361,7 @@ export default function LecturerAnnouncements() {
                             setViewingId(announcement.id);
                             fetchEngagementDetails(announcement.id);
                           }}
-                          title="View announcement details"
+                          title="View engagement details"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -360,7 +380,7 @@ export default function LecturerAnnouncements() {
                       </div>
                     </div>
 
-                    {/* Engagement Stats */}
+                    {/* Impressions */}
                     <div className="flex gap-4 pt-3 border-t border-border/60">
                       <div className="flex items-center gap-2">
                         <Eye className="h-4 w-4 text-muted-foreground" />
@@ -377,7 +397,7 @@ export default function LecturerAnnouncements() {
                       <div className="flex items-center gap-2">
                         <MessageSquare className="h-4 w-4 text-blue-500" />
                         <span className="text-sm text-muted-foreground">
-                          {announcement.comments} comments
+                          {announcement.commentsCount} comments
                         </span>
                       </div>
                     </div>
@@ -491,7 +511,7 @@ export default function LecturerAnnouncements() {
           </motion.div>
         )}
 
-        {/* View Announcement Modal */}
+        {/* View Announcement Modal - Lecturer sees all comments */}
         {viewingId && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -530,22 +550,24 @@ export default function LecturerAnnouncements() {
                       </p>
                     </div>
 
+                    {/* Impression counts */}
                     <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border/60">
                       <div className="text-center">
                         <p className="text-2xl font-bold text-emerald-600">
-                          {announcement.views}
+                          {viewEngagement?.views ?? announcement.views}
                         </p>
                         <p className="text-xs text-muted-foreground">Views</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-red-600">
-                          {announcement.likes}
+                          {viewEngagement?.likes ?? announcement.likes}
                         </p>
                         <p className="text-xs text-muted-foreground">Likes</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-blue-600">
-                          {announcement.comments}
+                          {viewEngagement?.comments_count ??
+                            announcement.commentsCount}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Comments
@@ -553,106 +575,45 @@ export default function LecturerAnnouncements() {
                       </div>
                     </div>
 
-                    {/* Engagement Details */}
+                    {/* All student comments */}
                     {loadingEngagement ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
                       </div>
-                    ) : engagementDetails ? (
-                      <div className="space-y-4 pt-4 border-t border-border/60">
-                        {/* Views */}
-                        {engagementDetails.views.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                              <Eye className="h-4 w-4 text-emerald-600" />
-                              Students who viewed (
-                              {engagementDetails.views.length})
-                            </h3>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                              {engagementDetails.views.map((view, idx) => (
-                                <div
-                                  key={idx}
-                                  className="text-xs flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg"
-                                >
-                                  <span className="font-medium">
-                                    {view.student_name}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {new Date(view.viewed_at).toLocaleString()}
-                                  </span>
-                                </div>
-                              ))}
+                    ) : viewEngagement &&
+                      viewEngagement.comments.length > 0 ? (
+                      <div className="space-y-3 pt-4 border-t border-border/60">
+                        <h3 className="font-semibold text-sm flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-blue-600" />
+                          Student Comments (
+                          {viewEngagement.comments.length})
+                        </h3>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {viewEngagement.comments.map((comment) => (
+                            <div
+                              key={comment.id}
+                              className="px-3 py-2 bg-muted/50 rounded-lg space-y-1"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium">
+                                  {comment.student_name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(
+                                    comment.created_at,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-sm text-foreground">
+                                {comment.content}
+                              </p>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Likes */}
-                        {engagementDetails.likes.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                              <Heart className="h-4 w-4 text-red-600" />
-                              Students who liked (
-                              {engagementDetails.likes.length})
-                            </h3>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                              {engagementDetails.likes.map((like, idx) => (
-                                <div
-                                  key={idx}
-                                  className="text-xs flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg"
-                                >
-                                  <span className="font-medium">
-                                    {like.student_name}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {new Date(like.created_at).toLocaleString()}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Comments */}
-                        {engagementDetails.comments.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                              <MessageSquare className="h-4 w-4 text-blue-600" />
-                              Comments ({engagementDetails.comments.length})
-                            </h3>
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                              {engagementDetails.comments.map(
-                                (comment, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="px-3 py-2 bg-muted/50 rounded-lg space-y-1"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-medium">
-                                        {comment.student_name}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(
-                                          comment.created_at,
-                                        ).toLocaleString()}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-foreground">
-                                      {comment.content}
-                                    </p>
-                                  </div>
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {engagementDetails.views.length === 0 &&
-                          engagementDetails.likes.length === 0 &&
-                          engagementDetails.comments.length === 0 && (
-                            <div className="text-center py-4 text-sm text-muted-foreground">
-                              No student engagement yet
-                            </div>
-                          )}
+                          ))}
+                        </div>
+                      </div>
+                    ) : viewEngagement ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground border-t border-border/60">
+                        No student comments yet
                       </div>
                     ) : null}
 
@@ -660,7 +621,7 @@ export default function LecturerAnnouncements() {
                       <Button
                         onClick={() => {
                           setViewingId(null);
-                          setEngagementDetails(null);
+                          setViewEngagement(null);
                         }}
                         className="flex-1 bg-gradient-to-r from-primary to-secondary"
                       >

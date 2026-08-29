@@ -11,6 +11,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Notifications from "./pages/Notifications";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LecturerCourseSelection from "./pages/LecturerCourseSelection";
+import LecturerCourses from "./pages/LecturerCourses";
 import MarksManagement from "./pages/MarksManagement";
 import LecturerAttendance from "./pages/LecturerAttendance";
 import LecturerClasses from "./pages/LecturerClasses";
@@ -80,7 +81,7 @@ function AppRoutes() {
         path="/lecturer/courses"
         element={
           <LecturerRoute>
-            <LecturerCourseSelection />
+            <LecturerCourses />
           </LecturerRoute>
         }
       />

@@ -53,6 +53,22 @@ export async function postBackend<T>(
   return handleResponse(response) as Promise<T>;
 }
 
+export async function putBackend<T>(
+  path: string,
+  payload: unknown,
+  auth: boolean = false,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth ? authHeaders() : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response) as Promise<T>;
+}
+
 export async function deleteBackend<T>(path: string, auth: boolean = false): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "DELETE",
