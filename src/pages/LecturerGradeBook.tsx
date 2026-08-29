@@ -95,6 +95,7 @@ export default function LecturerGradeBook() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [changedGrades, setChangedGrades] = useState<Set<string>>(new Set());
+  const [quizResults, setQuizResults] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -236,6 +237,32 @@ export default function LecturerGradeBook() {
       });
 
       setStudents(studentsWithGrades);
+
+      // Fetch quiz attempts for enrolled students
+      try {
+        const allAttempts = await getBackend<any[]>("/api/quiz-attempts/");
+        const enrolledAttempts = allAttempts.filter((a: any) =>
+          studentIds.includes(String(a.student_id))
+        );
+        // Enrich with quiz titles
+        const quizIds = [...new Set(enrolledAttempts.map((a: any) => a.quiz_id))];
+        const quizMap: Record<string, string> = {};
+        for (const qid of quizIds) {
+          try {
+            const qData = await getBackend<any>(`/api/quizzes/${qid}/`);
+            quizMap[String(qid)] = qData.title || "Quiz";
+          } catch {}
+        }
+        // Enrich with student names
+        const enriched = enrolledAttempts.map((a: any) => ({
+          ...a,
+          quiz_title: quizMap[String(a.quiz_id)] || "Quiz",
+          student_name: profilesMap[String(a.student_id)]?.full_name || a.student_name || "Unknown",
+        }));
+        setQuizResults(enriched);
+      } catch {
+        console.log("Failed to fetch quiz results");
+      }
     } catch (error) {
       console.error("Error fetching students and grades:", error);
     } finally {
@@ -976,6 +1003,75 @@ export default function LecturerGradeBook() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Quiz Results */}
+        {quizResults.length > 0 && (
+          <Card className="border-border/60 bg-card/70 backdrop-blur-lg">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                Quiz Results ({quizResults.length} attempts)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full text-xs sm:text-sm min-w-max">
+                  <thead>
+                    <tr className="border-b border-border/60">
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold">Student</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold">Quiz</th>
+                      <th className="px-1 sm:px-3 py-2 sm:py-3 text-center font-semibold">Score</th>
+                      <th className="px-1 sm:px-3 py-2 sm:py-3 text-center font-semibold">%</th>
+                      <th className="hidden sm:table-cell px-3 py-3 text-center font-semibold">Time</th>
+                      <th className="px-1 sm:px-3 py-2 sm:py-3 text-center font-semibold">Status</th>
+                      <th className="hidden sm:table-cell px-3 py-3 text-center font-semibold">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quizResults.map((attempt: any, idx: number) => (
+                      <motion.tr
+                        key={attempt.id}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.02 }}
+                        className="border-b border-border/30 hover:bg-muted/20"
+                      >
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium">{attempt.student_name}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-muted-foreground">{attempt.quiz_title}</td>
+                        <td className="px-1 sm:px-3 py-2 sm:py-3 text-center font-semibold">
+                          {attempt.score}/{attempt.total_points}
+                        </td>
+                        <td className="px-1 sm:px-3 py-2 sm:py-3 text-center">
+                          <span className={`font-semibold ${
+                            attempt.percentage >= 70 ? "text-emerald-600" :
+                            attempt.percentage >= 50 ? "text-amber-600" : "text-red-600"
+                          }`}>
+                            {attempt.percentage}%
+                          </span>
+                        </td>
+                        <td className="hidden sm:table-cell px-3 py-3 text-center text-muted-foreground">
+                          {attempt.time_taken != null ? `${Math.floor(attempt.time_taken / 60)}:${String(attempt.time_taken % 60).padStart(2, "0")}` : "-"}
+                        </td>
+                        <td className="px-1 sm:px-3 py-2 sm:py-3 text-center">
+                          <Badge className={
+                            attempt.passed
+                              ? "bg-emerald-500/20 text-emerald-700"
+                              : "bg-red-500/20 text-red-700"
+                          }>
+                            {attempt.passed ? "Passed" : "Failed"}
+                          </Badge>
+                        </td>
+                        <td className="hidden sm:table-cell px-3 py-3 text-center text-muted-foreground text-xs">
+                          {attempt.completed_at ? new Date(attempt.completed_at).toLocaleDateString() : "-"}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       <LecturerBottomNav />
