@@ -39,4 +39,7 @@ public class Student {
 
     @Column(length = 50)
     private String status = "active";
+
+    @Column(length = 500)
+    private String avatarUrl;
 }

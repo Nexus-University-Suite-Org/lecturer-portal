@@ -29,11 +29,14 @@ import com.nexus.lecturerbackend.repository.SubmissionRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
+
+    private static final long LECTURER_ID = 101L;
 
     private final LecturerRepository lecturerRepository;
     private final StudentRepository studentRepository;
@@ -49,6 +52,7 @@ public class DataSeeder implements CommandLineRunner {
     private final ProfileRepository profileRepository;
     private final StudentGradeRepository gradeRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     public DataSeeder(LecturerRepository lecturerRepository,
                       StudentRepository studentRepository,
@@ -63,7 +67,8 @@ public class DataSeeder implements CommandLineRunner {
                       NotificationRepository notificationRepository,
                       ProfileRepository profileRepository,
                       StudentGradeRepository gradeRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      JdbcTemplate jdbcTemplate) {
         this.lecturerRepository = lecturerRepository;
         this.studentRepository = studentRepository;
         this.courseRepository = courseRepository;
@@ -78,6 +83,7 @@ public class DataSeeder implements CommandLineRunner {
         this.profileRepository = profileRepository;
         this.gradeRepository = gradeRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -101,6 +107,13 @@ public class DataSeeder implements CommandLineRunner {
         lecturer.setRole("lecturer");
         lecturer.setAssignedCourseUnits(List.of(1L, 2L, 3L));
         lecturer = lecturerRepository.save(lecturer);
+
+        // Give the lecturer a stable high id (101) that never collides with
+        // student ids (1-5), and keep the entity id in sync for downstream seeds.
+        renumberLecturer(lecturer.getId());
+        if (lecturer.getId() != null) {
+            lecturer.setId(LECTURER_ID);
+        }
 
         Course cs101 = course("BIT1101", "Introduction to Programming", "Semester 1", "2026", 3);
         Course cs202 = course("BIT2203", "Data Structures & Algorithms", "Semester 2", "2026", 4);
@@ -310,5 +323,31 @@ public class DataSeeder implements CommandLineRunner {
         g.setGrade(grade);
         g.setGp(gp);
         return g;
+    }
+
+    private void renumberLecturer(Long oldId) {
+        if (oldId == null || oldId == LECTURER_ID) {
+            return;
+        }
+        try {
+            List<String> fks = jdbcTemplate.query(
+                    "SELECT conname FROM pg_constraint WHERE conrelid = 'lecturer_assigned_course_units'::regclass AND contype = 'f' AND confrelid = 'lecturers'::regclass",
+                    (rs, rowNum) -> rs.getString(1));
+            for (String fk : fks) {
+                jdbcTemplate.execute("ALTER TABLE lecturer_assigned_course_units DROP CONSTRAINT \"" + fk + "\"");
+            }
+            jdbcTemplate.update("UPDATE lecturer_assigned_course_units SET lecturer_id = ? WHERE lecturer_id = ?", LECTURER_ID, oldId);
+            jdbcTemplate.update("UPDATE notifications SET user_id = ? WHERE user_id = ?", LECTURER_ID, oldId);
+            jdbcTemplate.update("UPDATE assignments SET lecturer_id = ? WHERE lecturer_id = ?", LECTURER_ID, oldId);
+            jdbcTemplate.update("UPDATE announcements SET author_id = ? WHERE author_id = ?", LECTURER_ID, oldId);
+            jdbcTemplate.update("UPDATE student_grades SET lecturer_id = ? WHERE lecturer_id = ?", LECTURER_ID, oldId);
+            jdbcTemplate.update("UPDATE lecturers SET id = ? WHERE id = ?", LECTURER_ID, oldId);
+            jdbcTemplate.update("ALTER TABLE lecturers ALTER COLUMN id RESTART WITH 102");
+            for (String fk : fks) {
+                jdbcTemplate.execute("ALTER TABLE lecturer_assigned_course_units ADD CONSTRAINT \"" + fk + "\" FOREIGN KEY (lecturer_id) REFERENCES lecturers(id)");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

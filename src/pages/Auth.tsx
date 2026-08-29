@@ -12,7 +12,7 @@ import {
   Award,
   Users,
   Sparkles,
-  IdCard,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -224,20 +224,21 @@ export default function Auth() {
               Welcome back
             </h1>
             <p className="text-muted-foreground text-lg">
-              Sign in with your student credentials
+              Sign in with your email and password
             </p>
           </div>
 
           <form onSubmit={handleSignIn} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="identifier" className="text-sm font-medium">
-                Student / Registration Number or Email
+                Email
               </Label>
               <div className="relative">
-                <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="identifier"
-                  placeholder="21/U/12345/PS, 2100712345 or email"
+                  type="email"
+                  placeholder="you@example.com"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="h-14 pl-12 text-base rounded-xl bg-muted/50 border-border focus:bg-background transition-colors"

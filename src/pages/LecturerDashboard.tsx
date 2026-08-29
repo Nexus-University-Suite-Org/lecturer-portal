@@ -632,7 +632,7 @@ export default function LecturerDashboard() {
 
                   {gradingQueue.map((item, idx) => (
                     <motion.div
-                      key={item.course}
+                      key={`${item.course}-${idx}`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.1 }}
@@ -880,7 +880,7 @@ export default function LecturerDashboard() {
 
                   {messages.map((item, idx) => (
                     <motion.div
-                      key={item.text}
+                      key={`${item.text}-${idx}`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.1 }}

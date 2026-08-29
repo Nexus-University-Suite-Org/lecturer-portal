@@ -5,6 +5,10 @@ server:
 spring:
   application:
     name: lecturer-backend
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/nexus_lecturer}
     username: ${DATABASE_USER:postgres}
@@ -37,3 +41,4 @@ lecturer:
 logging:
   level:
     org.hibernate.SQL: WARN
+    org.springframework.web.multipart: DEBUG

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
@@ -34,9 +34,24 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBackend, postBackend } from "@/lib/backendApi";
+import { MiniStomp } from "@/lib/stompClient";
+
+const MESSAGING_WS_BASE =
+  (import.meta.env.VITE_API_BASE_URL || "http://localhost:8084").replace(
+    /^http/,
+    "ws",
+  );
 
 interface Message {
   id: string;
@@ -96,15 +111,47 @@ export default function LecturerMessages() {
   const [sending, setSending] = useState(false);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const stompRef = useRef<MiniStomp | null>(null);
+  const [participantId, setParticipantId] = useState<string | null>(null);
+  const participantIdRef = useRef<string | null>(null);
+
+  // Resolve the current user's shared participant id by email so a stale
+  // cached numeric uid (e.g. after the lecturer was renumbered) can't break
+  // inbox/topic routing.
+  useEffect(() => {
+    const email = profile?.email || user?.email || "";
+    if (!email) return;
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8084";
+    fetch(`${base}/api/participants/resolve?email=${encodeURIComponent(email)}`)
+      .then((r) => r.json().catch(() => null))
+      .then((data: any) => {
+        if (data && data.found && data.id != null) {
+          setParticipantId(String(data.id));
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile]);
+
+  useEffect(() => {
+    if (participantId) {
+      participantIdRef.current = participantId;
+    }
+  }, [participantId]);
+
+  const uid = () => participantIdRef.current || user?.uid || "";
 
   const downloadAttachment = async (
     attachmentPath: string,
     attachmentName: string,
   ) => {
     try {
-      const url = await getBackend<string>(`/api/messages/attachment/?path=${encodeURIComponent(attachmentPath)}`);
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8084";
+      const fullUrl = attachmentPath.startsWith("http")
+        ? attachmentPath
+        : `${baseUrl}${attachmentPath}`;
       const a = document.createElement("a");
-      a.href = url;
+      a.href = fullUrl;
       a.download = attachmentName;
       a.target = "_blank";
       document.body.appendChild(a);
@@ -112,7 +159,7 @@ export default function LecturerMessages() {
       document.body.removeChild(a);
     } catch (error) {
       console.error("Error downloading attachment:", error);
-      alert("Failed to download attachment");
+      toast.error("Failed to download attachment");
     }
   };
 
@@ -121,7 +168,35 @@ export default function LecturerMessages() {
       fetchMessages();
       fetchStudents();
     }
-  }, [user, selectedView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, selectedView, participantId]);
+
+  useEffect(() => {
+    const uid = participantId || user?.uid;
+    if (!uid) return;
+    if (!stompRef.current) {
+      stompRef.current = new MiniStomp(`${MESSAGING_WS_BASE}/ws`);
+      stompRef.current.connect(() => {
+        stompRef.current?.subscribe(`/topic/messages/${uid}`, async (payload) => {
+          if (payload && payload.messageId != null) {
+            const updated = await fetchMessages();
+            const incoming = updated.find(
+              (m) =>
+                m.id === String(payload.messageId) &&
+                m.to_user_id === uid,
+            );
+            if (incoming) {
+              toast("New message", {
+                description: `From ${incoming.from_profile?.full_name || "Unknown"}: ${incoming.subject}`,
+              });
+            }
+            window.dispatchEvent(new Event("notifications-updated"));
+          }
+        });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, participantId]);
 
   const fetchStudents = async () => {
     try {
@@ -140,7 +215,7 @@ export default function LecturerMessages() {
           enrollmentDate: new Date().toISOString(),
           track: item.programme || "General",
         }))
-        .filter((p) => p.id !== user.uid);
+        .filter((p) => String(p.id) !== uid());
 
       setStudents(studentsData);
     } catch (error) {
@@ -148,8 +223,9 @@ export default function LecturerMessages() {
     }
   };
 
-  const fetchMessages = async () => {
-    if (!user?.uid) return;
+  const fetchMessages = async (): Promise<Message[]> => {
+    const me = uid();
+    if (!me) return [];
 
     try {
       setLoading(true);
@@ -160,29 +236,51 @@ export default function LecturerMessages() {
       }
 
       const data = await getBackend<any[]>(
-        `/api/messages/${encodeURIComponent(user.uid)}/?${params.toString()}`,
+        `/api/messages/${encodeURIComponent(me)}/?${params.toString()}`,
       );
 
       const messagesData: Message[] = data.map((msg) => ({
         ...msg,
         created_at: msg.created_at,
-        from_profile: {
-          id: msg.from_user_id,
-          full_name: msg.from_user_id,
-          email: "",
-          avatar_url: null,
-        },
-        to_profile: {
-          id: msg.to_user_id,
-          full_name: msg.to_user_id,
-          email: "",
-          avatar_url: null,
-        },
+        from_profile: msg.from_profile
+          ? {
+              id: String(msg.from_profile.id ?? msg.from_user_id),
+              full_name:
+                typeof msg.from_profile.full_name === "string"
+                  ? msg.from_profile.full_name
+                  : String(msg.from_user_id),
+              email: msg.from_profile.email || "",
+              avatar_url: msg.from_profile.avatar_url ?? null,
+            }
+          : {
+              id: String(msg.from_user_id),
+              full_name: String(msg.from_user_id),
+              email: "",
+              avatar_url: null,
+            },
+        to_profile: msg.to_profile
+          ? {
+              id: String(msg.to_profile.id ?? msg.to_user_id),
+              full_name:
+                typeof msg.to_profile.full_name === "string"
+                  ? msg.to_profile.full_name
+                  : String(msg.to_user_id),
+              email: msg.to_profile.email || "",
+              avatar_url: msg.to_profile.avatar_url ?? null,
+            }
+          : {
+              id: String(msg.to_user_id),
+              full_name: String(msg.to_user_id),
+              email: "",
+              avatar_url: null,
+            },
       }));
 
       setMessages(messagesData);
+      return messagesData;
     } catch (error) {
       console.error("Error fetching messages:", error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -195,12 +293,18 @@ export default function LecturerMessages() {
       !composeSubject.trim() ||
       !composeBody.trim()
     ) {
-      alert("Please fill in all fields and select a recipient.");
+      toast.error("Please fill in all fields and select a recipient.");
       return;
     }
 
     try {
       setSending(true);
+
+      const me = uid();
+      if (!me) {
+        toast.error("Could not resolve your messaging account. Please sign in again.");
+        return;
+      }
 
       let attachmentUrl = null;
       let attachmentName = null;
@@ -209,14 +313,38 @@ export default function LecturerMessages() {
       // Upload attachment if present
       if (attachmentFile) {
         setUploadingAttachment(true);
-        console.log("Attachment upload not yet implemented via platform API");
-        attachmentName = attachmentFile.name;
-        attachmentSize = attachmentFile.size;
+        const reader = new FileReader();
+        const base64Data = await new Promise<string>((resolve) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.readAsDataURL(attachmentFile);
+        });
+        const uploadResp = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8084"}/api/attachments/base64`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              file_name: attachmentFile.name,
+              content_type: attachmentFile.type,
+              size: attachmentFile.size,
+              data: base64Data,
+            }),
+          },
+        );
+        if (uploadResp.ok) {
+          const uploadData = await uploadResp.json();
+          attachmentUrl = uploadData.url;
+          attachmentName = attachmentFile.name;
+          attachmentSize = attachmentFile.size;
+        }
         setUploadingAttachment(false);
       }
 
       const messageData = {
-        from_user_id: user.uid,
+        from_user_id: me,
         to_user_id: composeToId,
         subject: composeSubject,
         body: composeBody,
@@ -238,10 +366,10 @@ export default function LecturerMessages() {
       // Refresh messages
       fetchMessages();
 
-      alert("Message sent successfully!");
+      toast.success("Message sent successfully!");
     } catch (error) {
       console.error("Error sending message:", error);
-      alert("Failed to send message. Error: " + (error as any).message);
+      toast.error("Failed to send message. Error: " + (error as any).message);
     } finally {
       setSending(false);
     }
@@ -256,11 +384,12 @@ export default function LecturerMessages() {
   };
 
   const handleToggleStar = async (messageId: string, currentValue: boolean) => {
-    if (!user?.uid) return;
+    const me = uid();
+    if (!me) return;
     try {
       await postBackend(`/api/messages/${messageId}/action/`, {
         action: "star",
-        user_id: user.uid,
+        user_id: me,
       });
 
       setMessages((prev) =>
@@ -274,12 +403,13 @@ export default function LecturerMessages() {
   };
 
   const handleDelete = async (messageId: string) => {
-    if (!user?.uid) return;
+    const me = uid();
+    if (!me) return;
 
     try {
       await postBackend(`/api/messages/${messageId}/action/`, {
         action: "delete",
-        user_id: user.uid,
+        user_id: me,
       });
 
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
@@ -290,12 +420,13 @@ export default function LecturerMessages() {
   };
 
   const markAsRead = async (messageId: string) => {
-    if (!user?.uid) return;
+    const me = uid();
+    if (!me) return;
 
     try {
       await postBackend(`/api/messages/${messageId}/action/`, {
         action: "read",
-        user_id: user.uid,
+        user_id: me,
       });
 
       setMessages((prev) =>
@@ -308,7 +439,7 @@ export default function LecturerMessages() {
 
   const handleMessageClick = (message: Message) => {
     setSelectedMessage(message);
-    if (!message.is_read && message.to_user_id === user?.uid) {
+    if (!message.is_read && message.to_user_id === uid()) {
       markAsRead(message.id);
     }
   };
@@ -326,10 +457,11 @@ export default function LecturerMessages() {
   });
 
   const unreadCount = messages.filter(
-    (m) => !m.is_read && m.to_user_id === user?.uid,
+    (m) => !m.is_read && m.to_user_id === uid(),
   ).length;
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: unknown) => {
+    if (!name || typeof name !== "string") return "?";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -405,22 +537,34 @@ export default function LecturerMessages() {
 
           {/* View Tabs */}
           <div className="flex gap-2 flex-wrap">
-            {(["inbox", "sent", "starred"] as ViewType[]).map((view) => (
-              <button
-                key={view}
-                onClick={() => setSelectedView(view)}
-                className={`px-3 md:px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-                  selectedView === view
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted/60 text-foreground hover:bg-muted"
-                }`}
-              >
-                {view === "inbox" && <Inbox className="inline h-4 w-4 mr-1" />}
-                {view === "sent" && <Send className="inline h-4 w-4 mr-1" />}
-                {view === "starred" && <Star className="inline h-4 w-4 mr-1" />}
-                {view.charAt(0).toUpperCase() + view.slice(1)}
-              </button>
-            ))}
+            <Select
+              value={selectedView}
+              onValueChange={(value) => setSelectedView(value as ViewType)}
+            >
+              <SelectTrigger className="w-[180px] h-10">
+                <SelectValue placeholder="Select view" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inbox">
+                  <span className="flex items-center gap-2">
+                    <Inbox className="h-4 w-4" />
+                    Inbox
+                  </span>
+                </SelectItem>
+                <SelectItem value="sent">
+                  <span className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    Sent
+                  </span>
+                </SelectItem>
+                <SelectItem value="starred">
+                  <span className="flex items-center gap-2">
+                    <Star className="h-4 w-4" />
+                    Starred
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </motion.div>
 
@@ -460,7 +604,7 @@ export default function LecturerMessages() {
                 >
                   <Card
                     className={`border-border/60 cursor-pointer transition-all hover:shadow-md ${
-                      !message.is_read && message.to_user_id === user?.uid
+                      !message.is_read && message.to_user_id === uid()
                         ? "bg-primary/5 border-primary/30"
                         : "bg-card/70 backdrop-blur-lg"
                     } ${
@@ -486,7 +630,7 @@ export default function LecturerMessages() {
                               <p
                                 className={`font-semibold truncate text-sm md:text-base ${
                                   !message.is_read &&
-                                  message.to_user_id === user?.uid
+                                  message.to_user_id === uid()
                                     ? "font-bold text-foreground"
                                     : "text-foreground"
                                 }`}
@@ -494,7 +638,7 @@ export default function LecturerMessages() {
                                 {displayProfile?.full_name || "Unknown User"}
                               </p>
                               {!message.is_read &&
-                                message.to_user_id === user?.uid && (
+                                message.to_user_id === uid() && (
                                   <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
                                 )}
                             </div>
@@ -630,7 +774,7 @@ export default function LecturerMessages() {
                       const file = e.target.files?.[0];
                       if (file) {
                         if (file.size > 10485760) {
-                          alert("File size must be less than 10MB");
+                          toast.error("File size must be less than 10MB");
                           return;
                         }
                         setAttachmentFile(file);
@@ -782,6 +926,22 @@ export default function LecturerMessages() {
                   {selectedMessage.attachment_url && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Attachment:</p>
+                      {/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(
+                        selectedMessage.attachment_name || "",
+                      ) ? (
+                        <a
+                          href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8084"}${selectedMessage.attachment_url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <img
+                            src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8084"}${selectedMessage.attachment_url}`}
+                            alt={selectedMessage.attachment_name || "Attachment"}
+                            className="max-w-full max-h-80 rounded-lg border object-contain"
+                          />
+                        </a>
+                      ) : null}
                       <Button
                         variant="outline"
                         onClick={() =>
@@ -790,7 +950,7 @@ export default function LecturerMessages() {
                             selectedMessage.attachment_name || "attachment",
                           )
                         }
-                        className="gap-2 w-full sm:w-auto justify-start h-12"
+                        className="gap-2 w-full sm:w-auto justify-start h-12 mt-2"
                       >
                         <Paperclip className="h-4 w-4" />
                         {selectedMessage.attachment_name}{" "}
