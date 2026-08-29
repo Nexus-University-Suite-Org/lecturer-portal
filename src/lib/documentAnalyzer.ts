@@ -155,11 +155,22 @@ export class DocumentAnalyzer {
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items
+        const pageText = (textContent.items as any[])
           .map((item: any) => item.str || "")
           .join(" ");
         fullText += pageText + "\n";
       }
+
+      // Post-process: insert newlines before question numbers and answer lines
+      fullText = fullText
+        // Break before numbered questions like "1." "2." etc.
+        .replace(/(\s)(\d+\.\s)/g, "$1\n$2")
+        // Break before "Correct Answer:" lines (keep full line intact)
+        .replace(/(\s)(Correct\s+Answer:)/gi, "$1\n$2")
+        // Break before standalone "Answer:" lines
+        .replace(/(\s)(Answer:)/gi, "$1\n$2")
+        // Break before "Question N" patterns
+        .replace(/(\s)(Question\s+\d)/gi, "$1\n$2");
 
       return fullText.trim();
     } catch (error) {
@@ -285,13 +296,14 @@ export class DocumentAnalyzer {
   private static isAnswerLine(line: string): boolean {
     return (
       /^Answer:?\s*/i.test(line) ||
-      /^Correct:?\s*/i.test(line) ||
+      /^Correct\s+Answer:?\s*/i.test(line) ||
       /^\([A-Da-d]\)/.test(line)
     );
   }
 
   private static extractAnswer(line: string): string {
     const match =
+      line.match(/^Correct\s+Answer:?\s*(.+)/i) ||
       line.match(/^Answer:?\s*(.+)/i) ||
       line.match(/^Correct:?\s*(.+)/i) ||
       line.match(/^\(([A-Da-d])\)/);
