@@ -36,9 +36,12 @@ lecturer:
     secret: ${JWT_SECRET:lecturer-portal-secret-key-change-in-production-2026-ultra-secure-long-enough}
     expiration-hours: ${JWT_EXPIRATION_HOURS:24}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5175,http://127.0.0.1:5175,http://localhost:5174,http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5176,http://127.0.0.1:5176,http://localhost:5175,http://localhost:5174}
 
 logging:
   level:
     org.hibernate.SQL: WARN
     org.springframework.web.multipart: DEBUG
+
+set-password:
+  secret: ${SET_PASSWORD_SECRET:reg-backend-jwt-secret-key-2026-secure-long-enough-for-hmac}

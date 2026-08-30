@@ -8,6 +8,7 @@ import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
+import SetPassword from "./pages/SetPassword";
 import Notifications from "./pages/Notifications";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LecturerCourseSelection from "./pages/LecturerCourseSelection";
@@ -61,6 +62,7 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/auth" replace />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/set-password" element={<SetPassword />} />
       <Route
         path="/notifications"
         element={

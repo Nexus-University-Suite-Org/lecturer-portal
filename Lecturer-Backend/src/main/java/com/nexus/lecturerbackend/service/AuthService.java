@@ -4,9 +4,17 @@ import com.nexus.lecturerbackend.configuration.JwtUtil;
 import com.nexus.lecturerbackend.dto.AuthLoginResponse;
 import com.nexus.lecturerbackend.model.Lecturer;
 import com.nexus.lecturerbackend.repository.LecturerRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
 
 @Service
 public class AuthService {
@@ -14,6 +22,9 @@ public class AuthService {
     private final LecturerRepository lecturerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+
+    @Value("${set-password.secret:reg-backend-jwt-secret-key-2026-secure-long-enough-for-hmac}")
+    private String setPasswordSecret;
 
     public AuthService(LecturerRepository lecturerRepository,
                        PasswordEncoder passwordEncoder,
@@ -49,5 +60,41 @@ public class AuthService {
                         "lecturer",
                         "active")
         );
+    }
+
+    @Transactional
+    public void setPassword(String email, String newPassword, String token) {
+        // Verify the token
+        String tokenEmail = verifySetPasswordToken(token);
+        if (tokenEmail == null || !tokenEmail.equalsIgnoreCase(email.trim())) {
+            throw new RuntimeException("Invalid or expired token");
+        }
+
+        Lecturer lecturer = lecturerRepository.findByEmailIgnoreCase(email.trim())
+                .orElseThrow(() -> new RuntimeException("Lecturer not found with this email"));
+
+        lecturer.setPasswordHash(passwordEncoder.encode(newPassword));
+        lecturerRepository.save(lecturer);
+    }
+
+    private String verifySetPasswordToken(String token) {
+        try {
+            SecretKey key = Keys.hmacShaKeyFor(setPasswordSecret.getBytes(StandardCharsets.UTF_8));
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            if ("set-password".equals(claims.get("purpose", String.class))) {
+                Date expiration = claims.getExpiration();
+                if (expiration != null && expiration.after(new Date())) {
+                    return claims.getSubject();
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

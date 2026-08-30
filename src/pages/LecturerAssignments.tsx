@@ -36,6 +36,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getBackend, postBackend, deleteBackend, uploadAttachment } from "@/lib/backendApi";
 import { useToast } from "@/components/ui/use-toast";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8084";
+function resolveUrl(url: string): string {
+  if (!url) return url;
+  return url.startsWith("http") ? url : `${API_BASE}${url}`;
+}
+
 interface Assignment {
   id: string;
   title: string;
@@ -1268,7 +1274,7 @@ export default function LecturerAssignments() {
                     📎 Instruction Document
                   </p>
                   <a
-                    href={viewing.instructionDocumentUrl}
+                    href={resolveUrl(viewing.instructionDocumentUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-orange-600 hover:text-orange-700 transition-colors px-3 py-2 bg-orange-100 rounded-lg"
@@ -1354,7 +1360,7 @@ export default function LecturerAssignments() {
                             {/\.(jpg|jpeg|png|gif|webp)$/i.test(submission.file_name || submission.file_url) ? (
                               <div className="rounded-lg overflow-hidden border border-gray-200">
                                 <img
-                                  src={submission.file_url}
+                                  src={resolveUrl(submission.file_url)}
                                   alt={submission.file_name || "Submitted file"}
                                   className="max-w-full max-h-64 object-contain bg-gray-100"
                                 />
@@ -1363,7 +1369,7 @@ export default function LecturerAssignments() {
                             <div className="flex items-center gap-2">
                               <UploadIcon className="h-4 w-4 text-gray-500" />
                               <a
-                                href={submission.file_url}
+                                href={resolveUrl(submission.file_url)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-blue-600 hover:text-blue-800 underline"

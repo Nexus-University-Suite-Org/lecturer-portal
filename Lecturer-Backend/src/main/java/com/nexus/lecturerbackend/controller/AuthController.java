@@ -30,6 +30,24 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/student/set-password")
+    public ResponseEntity<?> setPassword(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.get("email");
+            String newPassword = body.get("newPassword");
+            String token = body.get("token");
+
+            if (email == null || email.isBlank() || newPassword == null || newPassword.isBlank() || token == null || token.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "Email, password, and token are required"));
+            }
+
+            authService.setPassword(email, newPassword, token);
+            return ResponseEntity.ok(Map.of("ok", true, "message", "Password set successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/student/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
         return ResponseEntity.ok(Map.of("ok", false, "message", "Password reset is managed by the institution"));
