@@ -93,7 +93,9 @@ export default function LecturerCourses() {
         true,
       );
       const lecturerProfile = profiles?.find(
-        (p: any) => String(p.user_id) === String(user!.uid),
+        (p: any) =>
+          String(p.id) === String(user!.uid) ||
+          String(p.email)?.toLowerCase() === String(user!.email)?.toLowerCase(),
       );
       const assignedIds: string[] =
         lecturerProfile?.assigned_course_units?.map(String) || [];

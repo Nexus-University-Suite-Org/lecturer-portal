@@ -1,18 +1,17 @@
 package com.nexus.lecturerbackend.controller;
 
 import com.nexus.lecturerbackend.dto.ProfileUpdateRequest;
+import com.nexus.lecturerbackend.model.CourseUnit;
 import com.nexus.lecturerbackend.model.Lecturer;
 import com.nexus.lecturerbackend.model.Profile;
+import com.nexus.lecturerbackend.repository.CourseUnitRepository;
 import com.nexus.lecturerbackend.repository.LecturerRepository;
 import com.nexus.lecturerbackend.repository.ProfileRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/profiles")
@@ -20,10 +19,12 @@ public class ProfileController {
 
     private final ProfileRepository profileRepository;
     private final LecturerRepository lecturerRepository;
+    private final CourseUnitRepository courseUnitRepository;
 
-    public ProfileController(ProfileRepository profileRepository, LecturerRepository lecturerRepository) {
+    public ProfileController(ProfileRepository profileRepository, LecturerRepository lecturerRepository, CourseUnitRepository courseUnitRepository) {
         this.profileRepository = profileRepository;
         this.lecturerRepository = lecturerRepository;
+        this.courseUnitRepository = courseUnitRepository;
     }
 
     @GetMapping
@@ -103,5 +104,60 @@ public class ProfileController {
         if (req.loginAlerts() != null) lecturer.setLoginAlerts(req.loginAlerts());
         lecturerRepository.save(lecturer);
         return ResponseEntity.ok(lecturer);
+    }
+
+    @PutMapping("/by-email/{email}/assigned-units")
+    public ResponseEntity<?> updateAssignedUnits(
+            @PathVariable String email,
+            @RequestBody Map<String, Object> body) {
+        Lecturer lecturer = lecturerRepository.findByEmailIgnoreCase(email)
+                .orElse(null);
+        if (lecturer == null) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "Lecturer not found"));
+        }
+        @SuppressWarnings("unchecked")
+        List<Integer> unitIds = (List<Integer>) body.get("assigned_course_units");
+        if (unitIds == null) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "assigned_course_units is required"));
+        }
+        lecturer.setAssignedCourseUnits(unitIds.stream().map(Integer::longValue).toList());
+        lecturerRepository.save(lecturer);
+        return ResponseEntity.ok(Map.of("ok", true, "message", "Assigned units updated"));
+    }
+
+    @PostMapping("/course-units/sync")
+    public ResponseEntity<?> syncCourseUnits(@RequestBody List<Map<String, Object>> units) {
+        int synced = 0;
+        for (Map<String, Object> unitData : units) {
+            Long externalId = ((Number) unitData.get("id")).longValue();
+            String code = (String) unitData.get("code");
+            String name = (String) unitData.get("name");
+            Integer credits = unitData.get("credits") != null ? ((Number) unitData.get("credits")).intValue() : 3;
+            String semester = unitData.get("semester") != null ? String.valueOf(unitData.get("semester")) : "1";
+            String year = unitData.get("year") != null ? String.valueOf(unitData.get("year")) : "1";
+
+            // Find existing by external code+name or create new
+            CourseUnit existing = courseUnitRepository.findAll().stream()
+                    .filter(c -> c.getCode() != null && c.getCode().equals(code))
+                    .findFirst().orElse(null);
+
+            if (existing != null) {
+                existing.setName(name);
+                existing.setCredits(credits);
+                existing.setSemester(semester);
+                existing.setYear(year);
+                courseUnitRepository.save(existing);
+            } else {
+                CourseUnit cu = new CourseUnit();
+                cu.setCode(code);
+                cu.setName(name);
+                cu.setCredits(credits);
+                cu.setSemester(semester);
+                cu.setYear(year);
+                courseUnitRepository.save(cu);
+                synced++;
+            }
+        }
+        return ResponseEntity.ok(Map.of("ok", true, "message", "Course units synced", "new", synced));
     }
 }
