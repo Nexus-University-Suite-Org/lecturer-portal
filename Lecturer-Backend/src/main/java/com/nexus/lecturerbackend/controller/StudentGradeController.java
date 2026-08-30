@@ -4,12 +4,9 @@ import com.nexus.lecturerbackend.dto.GradeRequest;
 import com.nexus.lecturerbackend.model.StudentGrade;
 import com.nexus.lecturerbackend.repository.StudentGradeRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/student-grades")
@@ -22,7 +19,15 @@ public class StudentGradeController {
     }
 
     @GetMapping
-    public ResponseEntity<?> list(@RequestParam(required = false) String course_id) {
+    public ResponseEntity<?> list(
+            @RequestParam(required = false) String course_id,
+            @RequestParam(required = false) String student_id) {
+        if (student_id != null && !student_id.isBlank()) {
+            try {
+                return ResponseEntity.ok(gradeRepository.findByStudentId(Long.parseLong(student_id)));
+            } catch (NumberFormatException ignored) {
+            }
+        }
         if (course_id != null && !course_id.isBlank()) {
             try {
                 return ResponseEntity.ok(gradeRepository.findByCourseId(Long.parseLong(course_id)));
@@ -33,8 +38,37 @@ public class StudentGradeController {
     }
 
     @GetMapping("/")
-    public ResponseEntity<?> listSlash(@RequestParam(required = false) String course_id) {
-        return list(course_id);
+    public ResponseEntity<?> listSlash(
+            @RequestParam(required = false) String course_id,
+            @RequestParam(required = false) String student_id) {
+        return list(course_id, student_id);
+    }
+
+    @PutMapping("/{id}/")
+    public ResponseEntity<?> update(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        var existing = gradeRepository.findById(id);
+        if (existing.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        StudentGrade grade = existing.get();
+        if (body.containsKey("total")) {
+            grade.setTotal(((Number) body.get("total")).doubleValue());
+        }
+        if (body.containsKey("grade")) {
+            grade.setGrade((String) body.get("grade"));
+        }
+        if (body.containsKey("gp")) {
+            grade.setGp(((Number) body.get("gp")).doubleValue());
+        }
+        gradeRepository.save(grade);
+        return ResponseEntity.ok(grade);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateNoSlash(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        return update(id, body);
     }
 
     @PostMapping

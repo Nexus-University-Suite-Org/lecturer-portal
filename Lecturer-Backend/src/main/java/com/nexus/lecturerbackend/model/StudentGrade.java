@@ -43,4 +43,10 @@ public class StudentGrade {
     private String grade;
 
     private Double gp;
+
+    @Column(length = 20)
+    private String academicYear;
+
+    @Column(length = 20)
+    private String semester;
 }
