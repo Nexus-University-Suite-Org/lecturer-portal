@@ -112,15 +112,26 @@ export default function LecturerDashboard() {
       const lecturerUid = user?.uid;
       if (!lecturerUid) return;
 
-      const data = await getBackend<any>(
-        `/api/lecturer/summary/?lecturer_id=${encodeURIComponent(lecturerUid)}`,
+      const profiles = await getBackend<any[]>("/api/profiles/?role=lecturer", true);
+      const lecturerProfile = profiles?.find(
+        (p: any) =>
+          String(p.id) === String(lecturerUid) ||
+          String(p.email)?.toLowerCase() === String(user!.email)?.toLowerCase(),
       );
+      const assignedIds: string[] =
+        lecturerProfile?.assigned_course_units?.map(String) || [];
+
+      let courseCount = assignedIds.length;
+      if (courseCount === 0) {
+        const coursesData = await getBackend<any[]>("/api/courses/", true);
+        courseCount = (coursesData || []).length;
+      }
 
       setStats({
-        courses: data.assignments_count ?? 0,
-        students: data.announcements_count ?? 0,
-        pendingMarks: data.quizzes_count ?? 0,
-        submissions: (data.messages_received ?? 0) + (data.messages_sent ?? 0),
+        courses: courseCount,
+        students: 0,
+        pendingMarks: 0,
+        submissions: 0,
       });
     } catch (error) {
       console.error("Error loading stats:", error);
