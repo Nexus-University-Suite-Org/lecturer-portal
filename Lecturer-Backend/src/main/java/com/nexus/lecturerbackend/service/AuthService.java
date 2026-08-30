@@ -63,15 +63,28 @@ public class AuthService {
     }
 
     @Transactional
-    public void setPassword(String email, String newPassword, String token) {
+    public void setPassword(String email, String newPassword, String token,
+                            String firstName, String lastName, String department, String specialization) {
         // Verify the token
         String tokenEmail = verifySetPasswordToken(token);
         if (tokenEmail == null || !tokenEmail.equalsIgnoreCase(email.trim())) {
             throw new RuntimeException("Invalid or expired token");
         }
 
+        // Find existing lecturer or auto-create with details from registrar
         Lecturer lecturer = lecturerRepository.findByEmailIgnoreCase(email.trim())
-                .orElseThrow(() -> new RuntimeException("Lecturer not found with this email"));
+                .orElseGet(() -> {
+                    Lecturer newLecturer = new Lecturer();
+                    newLecturer.setEmail(email.trim());
+                    String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+                    newLecturer.setFullName(fullName.isEmpty() ? email.split("@")[0] : fullName);
+                    newLecturer.setDepartment(department != null ? department : "");
+                    newLecturer.setSpecialization(specialization != null ? specialization : "");
+                    newLecturer.setStudentNumber("");
+                    newLecturer.setCollege("");
+                    newLecturer.setRole("lecturer");
+                    return newLecturer;
+                });
 
         lecturer.setPasswordHash(passwordEncoder.encode(newPassword));
         lecturerRepository.save(lecturer);

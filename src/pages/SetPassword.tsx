@@ -25,6 +25,10 @@ export default function SetPassword() {
 
   const token = searchParams.get("token");
   const email = searchParams.get("email");
+  const firstName = searchParams.get("firstName") || "";
+  const lastName = searchParams.get("lastName") || "";
+  const department = searchParams.get("department") || "";
+  const specialization = searchParams.get("specialization") || "";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -64,7 +68,7 @@ export default function SetPassword() {
       const response = await fetch("http://localhost:8084/api/v1/auth/student/set-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, newPassword: password, token }),
+        body: JSON.stringify({ email, newPassword: password, token, firstName, lastName, department, specialization }),
       });
 
       const data = await response.json();

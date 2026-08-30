@@ -41,7 +41,11 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "Email, password, and token are required"));
             }
 
-            authService.setPassword(email, newPassword, token);
+            authService.setPassword(email, newPassword, token,
+                    body.getOrDefault("firstName", ""),
+                    body.getOrDefault("lastName", ""),
+                    body.getOrDefault("department", ""),
+                    body.getOrDefault("specialization", ""));
             return ResponseEntity.ok(Map.of("ok", true, "message", "Password set successfully"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("ok", false, "message", e.getMessage()));
