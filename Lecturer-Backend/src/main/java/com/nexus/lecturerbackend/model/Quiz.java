@@ -68,4 +68,12 @@ public class Quiz {
     private Double highestScore;
 
     private Double lowestScore;
+
+    @Column(length = 20)
+    private String semester;
+
+    @Column(length = 20)
+    private String academicYear;
+
+    private Integer yearOfStudy;
 }

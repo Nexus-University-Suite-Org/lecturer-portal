@@ -21,6 +21,9 @@ public record QuizRequest(
         Boolean shuffleQuestions,
         Boolean showAnswers,
         Boolean autoDeactivate,
+        String semester,
+        String academicYear,
+        Integer yearOfStudy,
         List<QuestionRequest> questions) {
 
     public record QuestionRequest(

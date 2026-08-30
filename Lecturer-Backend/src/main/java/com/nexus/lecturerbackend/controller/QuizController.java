@@ -311,6 +311,9 @@ public class QuizController {
         if (req.shuffleQuestions() != null) q.setShuffleQuestions(req.shuffleQuestions());
         if (req.showAnswers() != null) q.setShowAnswers(req.showAnswers());
         if (req.autoDeactivate() != null) q.setAutoDeactivate(req.autoDeactivate());
+        if (req.semester() != null) q.setSemester(req.semester());
+        if (req.academicYear() != null) q.setAcademicYear(req.academicYear());
+        if (req.yearOfStudy() != null) q.setYearOfStudy(req.yearOfStudy());
         if (req.questions() != null) q.setTotalQuestions(req.questions().size());
     }
 
@@ -359,6 +362,9 @@ public class QuizController {
         m.put("completion_rate", q.getCompletionRate());
         m.put("highest_score", q.getHighestScore());
         m.put("lowest_score", q.getLowestScore());
+        m.put("semester", q.getSemester());
+        m.put("academic_year", q.getAcademicYear());
+        m.put("year_of_study", q.getYearOfStudy());
         return m;
     }
 
