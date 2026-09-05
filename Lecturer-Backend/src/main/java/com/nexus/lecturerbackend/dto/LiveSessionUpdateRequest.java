@@ -2,7 +2,7 @@ package com.nexus.lecturerbackend.dto;
 
 import java.time.LocalDateTime;
 
-public record LiveSessionCreateRequest(
+public record LiveSessionUpdateRequest(
         Long courseId,
         String title,
         String courseName,
@@ -10,5 +10,6 @@ public record LiveSessionCreateRequest(
         LocalDateTime scheduledAt,
         Integer durationMinutes,
         String meetLink,
-        String imageUrl) {
+        String imageUrl,
+        String status) {
 }

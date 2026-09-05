@@ -12,6 +12,8 @@ import {
   GraduationCap,
   Search,
   Filter,
+  Calendar,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBackend, putBackend, postBackend } from "@/lib/backendApi";
@@ -65,6 +67,20 @@ interface CourseWithStudents {
   course: CourseUnit;
   enrollments: (Enrollment & { student?: StudentProfile })[];
 }
+
+const buildGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const todayLabel = new Date().toLocaleDateString(undefined, {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 export default function LecturerCourses() {
   const { user } = useAuth();
@@ -227,102 +243,190 @@ export default function LecturerCourses() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 flex flex-col items-center justify-center gap-4">
+        <div className="relative">
+          <div className="h-14 w-14 rounded-2xl bg-primary/10 animate-pulse" />
+          <GraduationCap className="h-6 w-6 text-primary absolute inset-0 m-auto animate-pulse" />
+        </div>
+        <p className="text-sm text-muted-foreground">Loading your courses...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-8">
-      <main className="container py-8">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden -z-10">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute top-1/3 -left-24 h-64 w-64 rounded-full bg-teal/10 blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 h-72 w-72 rounded-full bg-lavender/10 blur-3xl" />
+      </div>
+
+      <main className="px-4 py-6 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-5">
+        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-6xl mx-auto"
         >
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <GraduationCap className="h-4 w-4" />
-              <span>Lecturer</span>
-              <span>/</span>
-              <span className="text-foreground">My Courses</span>
+          <section className="relative overflow-hidden rounded-3xl hero-gradient text-white p-5 sm:p-8 shadow-2xl">
+            <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-1/4 h-64 w-64 rounded-full bg-primary-foreground/10 blur-3xl" />
+
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 border border-white/20">
+                    <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium uppercase tracking-widest text-white/70">
+                    Enrollment Management
+                  </span>
+                </div>
+                <h1 className="font-display text-2xl sm:text-4xl text-white leading-tight">
+                  {buildGreeting()}, {user?.email?.split("@")[0] || "Lecturer"}
+                </h1>
+                <p className="max-w-md text-xs sm:text-sm text-white/80 leading-relaxed">
+                  Review your assigned course units and approve student enrollments.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] sm:text-xs text-white">
+                    <Calendar className="h-3 w-3" />
+                    {todayLabel}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] sm:text-xs text-white">
+                    <BookOpen className="h-3 w-3" />
+                    {courseUnits.length} courses
+                  </span>
+                  {pendingCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-amber px-3 py-1 text-[11px] sm:text-xs font-semibold text-navy shadow-glow">
+                      <Sparkles className="h-3 w-3 text-navy" />
+                      {pendingCount} pending approvals
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="hidden lg:flex items-center gap-2 rounded-2xl bg-white/10 border border-white/15 px-4 py-3 backdrop-blur-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-success">
+                  <Users className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest text-white/60">
+                    Approved
+                  </p>
+                  <p className="text-lg font-bold leading-tight">{approvedCount}</p>
+                </div>
+              </div>
             </div>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">
-              My Courses
-            </h1>
-          </div>
+          </section>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Courses</p>
-                    <p className="text-2xl font-bold">{courseUnits.length}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mt-5">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+              <Card className="overflow-hidden border-primary/30 bg-gradient-to-b from-primary/10 to-card/70">
+                <CardContent className="pt-0">
+                  <div className="h-1 w-full bg-gradient-to-r from-primary to-accent" />
+                  <div className="flex items-start justify-between gap-2 pt-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Courses</p>
+                      <p className="text-lg sm:text-2xl font-bold">{courseUnits.length}</p>
+                    </div>
+                    <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
+                      <BookOpen className="h-4 w-4" />
+                    </div>
                   </div>
-                  <BookOpen className="h-8 w-8 text-muted-foreground/30" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Enrolled Students</p>
-                    <p className="text-2xl font-bold">{totalEnrolled}</p>
+                  <div className="mt-2 flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
+                    <GraduationCap className="h-3 w-3 text-primary" />
+                    assigned to you
                   </div>
-                  <Users className="h-8 w-8 text-muted-foreground/30" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pending Approvals</p>
-                    <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-amber-500/30" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-            <div className="relative flex-1 w-full sm:max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search courses..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={filterSemester} onValueChange={setFilterSemester}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="All Semesters" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Semesters</SelectItem>
-                {semesters.map((sem) => (
-                  <SelectItem key={sem} value={sem}>
-                    Semester {sem}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+              <Card className="overflow-hidden border-teal/40 bg-gradient-to-b from-teal/10 to-card/70">
+                <CardContent className="pt-0">
+                  <div className="h-1 w-full bg-gradient-to-r from-teal to-emerald" />
+                  <div className="flex items-start justify-between gap-2 pt-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Enrolled Students</p>
+                      <p className="text-lg sm:text-2xl font-bold text-teal">{totalEnrolled}</p>
+                    </div>
+                    <div className="rounded-lg bg-teal/10 p-1.5 text-teal">
+                      <Users className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
+                    <Users className="h-3 w-3 text-teal" />
+                    across your courses
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <Card className="overflow-hidden border-amber/40 bg-gradient-to-b from-amber/10 to-card/70">
+                <CardContent className="pt-0">
+                  <div className="h-1 w-full bg-gradient-amber" />
+                  <div className="flex items-start justify-between gap-2 pt-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pending Approvals</p>
+                      <p className="text-lg sm:text-2xl font-bold text-amber-dark">{pendingCount}</p>
+                    </div>
+                    <div className="rounded-lg bg-amber/10 p-1.5 text-amber-dark">
+                      <Clock className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-amber-dark/40 animate-ping" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-dark" />
+                    </span>
+                    waiting for your decision
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-card/70 backdrop-blur-lg rounded-2xl border border-border/60 p-3 sm:px-4"
+        >
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search courses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filterSemester} onValueChange={setFilterSemester}>
+            <SelectTrigger className="w-full sm:w-[200px] gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <SelectValue placeholder="All Semesters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Semesters</SelectItem>
+              {semesters.map((sem) => (
+                <SelectItem key={sem} value={sem}>
+                  Semester {sem}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </motion.div>
 
           {/* Course Cards */}
           {filteredCourses.length === 0 ? (
-            <Card>
+            <Card className="border-dashed border-border/60 bg-card/50 backdrop-blur-lg">
               <CardContent className="py-16 text-center">
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                  <BookOpen className="h-8 w-8 text-primary/60" />
+                </div>
                 <h3 className="font-semibold text-lg mb-2">No courses found</h3>
                 <p className="text-muted-foreground">
                   {searchQuery
@@ -351,56 +455,57 @@ export default function LecturerCourses() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
-                    <Card className="overflow-hidden">
+                    <Card className="overflow-hidden border-border/60 bg-card/70 backdrop-blur-lg hover:shadow-lg transition-shadow">
+                      <div className="h-1 w-full bg-gradient-to-r from-teal via-accent to-primary" />
                       <CardHeader
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="cursor-pointer hover:bg-primary/5 transition-colors py-4"
                         onClick={() =>
                           setExpandedCourse(
                             isExpanded ? null : String(course.id),
                           )
                         }
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                              <BookOpen className="h-6 w-6 text-primary" />
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                            <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl hero-gradient flex items-center justify-center shrink-0 shadow-md">
+                              <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
                                 <Badge
                                   variant="outline"
-                                  className="font-mono text-xs"
+                                  className="font-mono text-[11px] sm:text-xs border-border/60"
                                 >
                                   {course.code}
                                 </Badge>
-                                <Badge className="bg-accent/10 text-accent text-xs">
+                                <Badge className="bg-accent/15 text-accent text-[11px] sm:text-xs border-0">
                                   {course.credits} Credits
                                 </Badge>
-                                <Badge variant="secondary" className="text-xs">
+                                <Badge variant="secondary" className="text-[11px] sm:text-xs">
                                   Sem {course.semester}
                                 </Badge>
                               </div>
-                              <h3 className="font-semibold text-lg">
+                              <h3 className="font-semibold text-sm sm:text-lg truncate">
                                 {course.name}
                               </h3>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <div className="hidden sm:flex items-center gap-3 text-sm">
-                              <span className="flex items-center gap-1">
+                          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                            <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="inline-flex items-center gap-1.5">
                                 <span className="h-2 w-2 rounded-full bg-amber-500" />
                                 {pending.length} pending
                               </span>
-                              <span className="flex items-center gap-1">
-                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-emerald" />
                                 {approved.length} approved
                               </span>
-                              <span className="flex items-center gap-1">
+                              <span className="inline-flex items-center gap-1.5">
                                 <span className="h-2 w-2 rounded-full bg-red-500" />
                                 {rejected.length} rejected
                               </span>
                             </div>
-                            <Badge variant="outline" className="text-sm">
+                            <Badge variant="outline" className="text-xs bg-muted/40 border-border/60">
                               <Users className="h-3 w-3 mr-1" />
                               {courseEnrollments.length}
                             </Badge>
@@ -421,37 +526,37 @@ export default function LecturerCourses() {
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <CardContent className="border-t">
+                            <CardContent className="border-t border-border/60 bg-muted/10">
                               {courseEnrollments.length === 0 ? (
                                 <div className="py-8 text-center text-muted-foreground">
                                   No students enrolled yet
                                 </div>
                               ) : (
-                                <div className="divide-y">
+                                <div className="divide-y divide-border/50">
                                   {courseEnrollments.map((enrollment) => {
                                     const student = enrollment.student;
                                     const statusColor =
                                       enrollment.status === "approved"
-                                        ? "bg-emerald-500/10 text-emerald-600"
+                                        ? "bg-emerald/15 text-emerald border-0"
                                         : enrollment.status === "rejected"
-                                          ? "bg-destructive/10 text-destructive"
-                                          : "bg-amber-500/10 text-amber-600";
+                                          ? "bg-red-500/15 text-red-600 border-0"
+                                          : "bg-amber/15 text-amber-dark border-0";
                                     const paperColor =
                                       enrollment.paper_type === "retake"
-                                        ? "bg-red-500/10 text-red-600"
+                                        ? "bg-coral/15 text-coral border-0"
                                         : enrollment.paper_type === "missed"
-                                          ? "bg-amber-500/10 text-amber-600"
+                                          ? "bg-amber/15 text-amber-dark border-0"
                                           : enrollment.paper_type === "supplementary"
-                                            ? "bg-purple-500/10 text-purple-600"
-                                            : "bg-blue-500/10 text-blue-600";
+                                            ? "bg-purple-500/15 text-purple-600 border-0"
+                                            : "bg-blue-500/15 text-blue-600 border-0";
 
                                     return (
                                       <div
                                         key={enrollment.id}
-                                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3"
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5"
                                       >
                                         <div className="flex items-center gap-3 min-w-0">
-                                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0 text-white shadow-sm">
                                             <span className="text-sm font-medium">
                                               {student?.full_name
                                                 ?.split(" ")
@@ -467,7 +572,7 @@ export default function LecturerCourses() {
                                             </p>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                                               {student?.registration_number && (
-                                                <span>{student.registration_number}</span>
+                                                <span className="font-mono">{student.registration_number}</span>
                                               )}
                                               {student?.student_number && (
                                                 <span>• {student.student_number}</span>
@@ -476,20 +581,20 @@ export default function LecturerCourses() {
                                           </div>
                                         </div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <Badge className={`text-xs border-0 ${paperColor}`}>
+                                          <Badge className={`text-[11px] sm:text-xs ${paperColor}`}>
                                             {(enrollment.paper_type || "normal").charAt(0).toUpperCase() +
                                               (enrollment.paper_type || "normal").slice(1)}
                                           </Badge>
-                                          <Badge className={`text-xs ${statusColor}`}>
+                                          <Badge className={`text-[11px] sm:text-xs ${statusColor}`}>
                                             {enrollment.status.charAt(0).toUpperCase() +
                                               enrollment.status.slice(1)}
                                           </Badge>
                                           {enrollment.status === "pending" && (
-                                            <div className="flex items-center gap-1">
+                                            <div className="flex items-center gap-1.5">
                                               <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="h-7 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                                className="h-7 text-xs text-emerald border-emerald/40 hover:bg-emerald/10"
                                                 disabled={updatingId === enrollment.id}
                                                 onClick={() =>
                                                   handleApproveReject(enrollment.id, "approved")
@@ -505,13 +610,17 @@ export default function LecturerCourses() {
                                               <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="h-7 text-xs text-destructive border-destructive/20 hover:bg-destructive/5"
+                                                className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
                                                 disabled={updatingId === enrollment.id}
                                                 onClick={() =>
                                                   handleApproveReject(enrollment.id, "rejected")
                                                 }
                                               >
-                                                <XCircle className="h-3 w-3 mr-1" />
+                                                {updatingId === enrollment.id ? (
+                                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : (
+                                                  <XCircle className="h-3 w-3 mr-1" />
+                                                )}
                                                 Reject
                                               </Button>
                                             </div>
@@ -532,7 +641,6 @@ export default function LecturerCourses() {
               })}
             </div>
           )}
-        </motion.div>
       </main>
       <LecturerBottomNav />
     </div>

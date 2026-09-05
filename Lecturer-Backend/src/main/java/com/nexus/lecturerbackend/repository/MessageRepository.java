@@ -10,4 +10,5 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findByFromUserIdAndIsStarredTrueAndIsDeletedFalseOrderByCreatedAtDesc(Long userId);
     List<Message> findByToUserIdAndIsStarredTrueAndIsDeletedFalseOrderByCreatedAtDesc(Long userId);
     List<Message> findByToUserIdAndIsArchivedTrueAndIsDeletedFalseOrderByCreatedAtDesc(Long userId);
+    void deleteByFromUserIdOrToUserId(Long fromUserId, Long toUserId);
 }

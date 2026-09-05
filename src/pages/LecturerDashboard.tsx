@@ -25,6 +25,7 @@ import {
   Zap,
   Eye,
   Heart,
+  Calendar,
 } from "lucide-react";
 import { LecturerBottomNav } from "@/components/layout/LecturerBottomNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +81,44 @@ const rise = {
     y: 0,
     transition: { delay: i * 0.05 },
   }),
+};
+
+const insightThemes: Record<string, { card: string; tile: string; bar: string }> = {
+  emerald: {
+    card: "border-emerald/40 bg-gradient-to-br from-emerald/10 to-transparent",
+    tile: "bg-emerald/15 text-emerald",
+    bar: "from-emerald to-teal-light",
+  },
+  blue: {
+    card: "border-blue-400/40 bg-gradient-to-br from-blue-500/10 to-transparent",
+    tile: "bg-blue-500/15 text-blue-600",
+    bar: "from-blue-500 to-blue-400",
+  },
+  cyan: {
+    card: "border-cyan-400/40 bg-gradient-to-br from-cyan-500/10 to-transparent",
+    tile: "bg-cyan-500/15 text-cyan-700",
+    bar: "from-cyan-500 to-cyan-400",
+  },
+  pink: {
+    card: "border-pink-400/40 bg-gradient-to-br from-pink-500/10 to-transparent",
+    tile: "bg-pink-500/15 text-pink-600",
+    bar: "from-pink-500 to-pink-400",
+  },
+};
+
+const signalThemes: Record<string, { badge: string; bar: string }> = {
+  emerald: {
+    badge: "border-emerald/40 text-emerald bg-emerald/15",
+    bar: "from-emerald to-teal-light",
+  },
+  amber: {
+    badge: "border-amber/40 text-amber-dark bg-amber/15",
+    bar: "from-amber to-amber-light",
+  },
+  rose: {
+    badge: "border-rose-400/40 text-rose-600 bg-rose-500/15",
+    bar: "from-rose-500 to-rose-400",
+  },
 };
 
 export default function LecturerDashboard() {
@@ -444,30 +483,27 @@ export default function LecturerDashboard() {
 
       <main className="px-4 pb-28 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto pt-6 lg:pt-10">
-          {/* Hero Section with Enhanced Design */}
-          <section className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card/90 via-card/80 to-card/60 backdrop-blur-xl p-8 sm:p-12 shadow-2xl mb-8">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-secondary/10 pointer-events-none rounded-3xl" />
-            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-primary/25 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-            <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl translate-y-1/4 -translate-x-1/4" />
+          {/* Hero Section */}
+          <section className="relative overflow-hidden rounded-3xl hero-gradient text-white p-6 sm:p-10 lg:p-12 shadow-2xl mb-8">
+            <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-1/4 h-64 w-64 rounded-full bg-primary-foreground/10 blur-3xl" />
 
-            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-4 flex-1">
-                <div className="inline-block">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-primary/80 font-bold bg-gradient-to-r from-primary/15 to-secondary/10 px-4 py-1.5 rounded-full border border-primary/30"
-                  >
-                    <Zap className="h-3.5 w-3.5" />
-                    Lecturer workspace
-                  </motion.div>
-                </div>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-flex items-center gap-2 text-[11px] sm:text-xs uppercase tracking-widest font-bold bg-white/15 border border-white/20 px-4 py-1.5 rounded-full"
+                >
+                  <Zap className="h-3.5 w-3.5 text-amber-light" />
+                  Lecturer workspace
+                </motion.div>
                 <motion.h1
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="text-4xl sm:text-5xl font-display font-bold flex items-center gap-3 text-foreground"
+                  className="text-2xl sm:text-4xl lg:text-5xl font-display font-bold flex items-center gap-3 text-white leading-tight"
                 >
                   Welcome back, {firstName}
                   <motion.div
@@ -478,35 +514,58 @@ export default function LecturerDashboard() {
                       repeatDelay: 1,
                     }}
                   >
-                    <Sparkles className="h-8 w-8 text-primary" />
+                    <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-amber-light" />
                   </motion.div>
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="text-base text-muted-foreground max-w-2xl leading-relaxed"
+                  className="text-xs sm:text-base text-white/80 max-w-2xl leading-relaxed"
                 >
                   Manage your courses, track student progress, conduct live
                   sessions, analyze performance trends, and stay connected with
                   your cohorts—all in one powerful dashboard.
                 </motion.p>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 }}
+                  className="flex flex-wrap gap-2 pt-1"
+                >
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] sm:text-xs text-white">
+                    <Calendar className="h-3 w-3" />
+                    {new Date().toLocaleDateString(undefined, {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] sm:text-xs text-white">
+                    <Layers className="h-3 w-3" />
+                    {stats.courses} courses
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-amber px-3 py-1 text-[11px] sm:text-xs font-semibold text-navy shadow-glow">
+                    <span className="h-1.5 w-1.5 rounded-full bg-navy animate-pulse" />
+                    Live workspace
+                  </span>
+                </motion.div>
               </div>
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
-                className="flex flex-col gap-3 sm:flex-row"
+                className="flex flex-col gap-3 sm:flex-row lg:flex-col w-full lg:w-auto"
               >
                 <Button
                   variant="outline"
-                  className="border-border/60 hover:bg-muted/50 gap-2 transition-all hover:shadow-lg"
+                  className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white gap-2 transition-all w-full lg:w-auto"
                   onClick={() => navigate("/lecturer/messages")}
                 >
                   <Mail className="h-4 w-4" /> Messages
                 </Button>
                 <Button
-                  className="bg-gradient-to-r from-primary via-primary/90 to-secondary text-primary-foreground border-0 shadow-xl shadow-primary/40 hover:shadow-primary/60 gap-2 transition-all"
+                  className="bg-gradient-amber text-navy border-0 shadow-glow hover:shadow-glow gap-2 transition-all font-semibold w-full lg:w-auto"
                   onClick={() => navigate("/lecturer/courses")}
                 >
                   <BookOpen className="h-4 w-4" /> My Courses
@@ -541,7 +600,7 @@ export default function LecturerDashboard() {
                       {stat.value}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3 text-emerald-500" />
+                      <TrendingUp className="h-3 w-3 text-emerald" />
                       {stat.hint}
                     </p>
                   </CardContent>
@@ -802,7 +861,7 @@ export default function LecturerDashboard() {
             >
               {/* Cohort Insights */}
               <Card className="border-border/60 bg-gradient-to-br from-card/90 to-card/70 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all duration-300">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
                 <CardHeader className="flex items-center justify-between relative">
                   <div>
                     <CardTitle className="text-lg text-foreground flex items-center gap-2">
@@ -813,7 +872,7 @@ export default function LecturerDashboard() {
                       Health of your classes at a glance
                     </p>
                   </div>
-                  <Badge className="bg-purple-500/20 text-purple-100 border-purple-300/30">
+                  <Badge className="bg-lavender/15 text-navy-light border-lavender/40">
                     <Eye className="h-3 w-3 mr-1" />
                     Real-time
                   </Badge>
@@ -826,40 +885,44 @@ export default function LecturerDashboard() {
                     </p>
                   )}
 
-                  {insights.map((item, idx) => (
-                    <motion.div
-                      key={item.title}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className={`rounded-2xl border border-border/60 bg-gradient-to-br from-${item.color}-500/5 to-transparent p-4 hover:shadow-lg transition-all cursor-pointer group`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">
-                            {item.title}
-                          </p>
-                          <p className="text-2xl font-bold text-foreground">
-                            {item.value}
-                          </p>
-                          <p className="text-xs text-primary font-semibold">
-                            {item.trend}
-                          </p>
+                  {insights.map((item, idx) => {
+                    const t =
+                      insightThemes[String(item.color)] || insightThemes.blue;
+                    return (
+                      <motion.div
+                        key={item.title}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className={`rounded-2xl border ${t.card} p-4 hover:shadow-lg transition-all cursor-pointer group`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">
+                              {item.title}
+                            </p>
+                            <p className="text-2xl font-bold text-foreground">
+                              {item.value}
+                            </p>
+                            <p className="text-xs text-primary font-semibold">
+                              {item.trend}
+                            </p>
+                          </div>
+                          <div
+                            className={`h-12 w-12 rounded-xl ${t.tile} flex items-center justify-center group-hover:scale-110 transition-transform`}
+                          >
+                            <item.icon className="h-6 w-6" />
+                          </div>
                         </div>
-                        <div
-                          className={`h-12 w-12 rounded-xl bg-${item.color}-500/20 text-${item.color}-600 flex items-center justify-center group-hover:scale-110 transition-transform`}
-                        >
-                          <item.icon className="h-6 w-6" />
+                        <div className="mt-3 h-2 rounded-full bg-border/50 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${t.bar}`}
+                            style={{ width: `${parseInt(item.value)}%` }}
+                          />
                         </div>
-                      </div>
-                      <div className="mt-3 h-2 rounded-full bg-border/50 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r from-${item.color}-500 to-${item.color}-400`}
-                          style={{ width: `${parseInt(item.value)}%` }}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </CardContent>
               </Card>
 
@@ -1021,7 +1084,9 @@ export default function LecturerDashboard() {
                       tag: "amber",
                     },
                     { title: "Data Mining", status: "At risk", tag: "rose" },
-                  ].map((course, idx) => (
+                  ].map((course, idx) => {
+                    const st = signalThemes[course.tag] || signalThemes.emerald;
+                    return (
                     <motion.div
                       key={course.title}
                       initial={{ opacity: 0, y: 10 }}
@@ -1035,7 +1100,7 @@ export default function LecturerDashboard() {
                         </p>
                         <Badge
                           variant="outline"
-                          className={`text-xs font-semibold border-${course.tag}-300/40 text-${course.tag}-600 bg-${course.tag}-500/10`}
+                          className={`text-xs font-semibold ${st.badge}`}
                         >
                           {course.status}
                         </Badge>
@@ -1052,11 +1117,12 @@ export default function LecturerDashboard() {
                                   : "42%",
                           }}
                           transition={{ duration: 1, delay: idx * 0.2 }}
-                          className={`h-full rounded-full bg-${course.tag}-500`}
+                          className={`h-full rounded-full bg-gradient-to-r ${st.bar}`}
                         />
                       </div>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               </Card>
 
@@ -1065,7 +1131,7 @@ export default function LecturerDashboard() {
                 <CardHeader className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg text-foreground flex items-center gap-2">
-                      <Award className="h-5 w-5 text-gold-500" />
+                      <Award className="h-5 w-5 text-amber-dark" />
                       Workload summary
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">

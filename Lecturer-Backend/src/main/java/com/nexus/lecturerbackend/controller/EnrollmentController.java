@@ -1,9 +1,11 @@
 package com.nexus.lecturerbackend.controller;
 
+import com.nexus.lecturerbackend.model.CourseUnit;
 import com.nexus.lecturerbackend.model.Enrollment;
 import com.nexus.lecturerbackend.model.Lecturer;
 import com.nexus.lecturerbackend.model.Notification;
 import com.nexus.lecturerbackend.model.Student;
+import com.nexus.lecturerbackend.repository.CourseUnitRepository;
 import com.nexus.lecturerbackend.repository.EnrollmentRepository;
 import com.nexus.lecturerbackend.repository.LecturerRepository;
 import com.nexus.lecturerbackend.repository.NotificationRepository;
@@ -30,21 +32,28 @@ public class EnrollmentController {
     private final StudentRepository studentRepository;
     private final LecturerRepository lecturerRepository;
     private final NotificationRepository notificationRepository;
+    private final CourseUnitRepository courseUnitRepository;
 
     public EnrollmentController(EnrollmentRepository enrollmentRepository,
                                  StudentRepository studentRepository,
                                  LecturerRepository lecturerRepository,
-                                 NotificationRepository notificationRepository) {
+                                 NotificationRepository notificationRepository,
+                                 CourseUnitRepository courseUnitRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.studentRepository = studentRepository;
         this.lecturerRepository = lecturerRepository;
         this.notificationRepository = notificationRepository;
+        this.courseUnitRepository = courseUnitRepository;
     }
 
     @GetMapping
     public ResponseEntity<?> list(@RequestParam(required = false) String courseIds,
                                   @RequestParam(required = false) String course_id,
-                                  @RequestParam(required = false) String student_id) {
+                                  @RequestParam(required = false) String student_id,
+                                  @RequestParam(name = "course_ids", required = false) String course_ids) {
+        if (course_ids != null && !course_ids.isBlank()) {
+            courseIds = course_ids;
+        }
         if (student_id != null && !student_id.isBlank()) {
             try {
                 Long sid = Long.parseLong(student_id.trim());
@@ -71,18 +80,30 @@ public class EnrollmentController {
     @GetMapping("/")
     public ResponseEntity<?> listSlash(@RequestParam(required = false) String courseIds,
                                        @RequestParam(required = false) String course_id,
-                                       @RequestParam(required = false) String student_id) {
-        return list(courseIds, course_id, student_id);
+                                       @RequestParam(required = false) String student_id,
+                                       @RequestParam(name = "course_ids", required = false) String course_ids) {
+        return list(courseIds, course_id, student_id, course_ids);
     }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         Long studentId = toLong(body.getOrDefault("student_id", body.get("studentId")));
         Long courseId = toLong(body.getOrDefault("course_id", body.get("courseId")));
-        String paperType = String.valueOf(body.getOrDefault("paper_type", body.getOrDefault("paperType", "normal")));
+        String courseCode = toStr(body.getOrDefault("courseCode", body.get("course_code")));
+        String courseName = toStr(body.getOrDefault("courseName", body.get("course_name")));
+        String paperType = toStr(body.getOrDefault("paper_type", body.getOrDefault("paperType", "normal")));
 
-        if (studentId == null || courseId == null) {
-            return ResponseEntity.badRequest().body(Map.of("detail", "student_id and course_id are required"));
+        if (studentId == null) {
+            return ResponseEntity.badRequest().body(Map.of("detail", "student_id is required"));
+        }
+
+        // Resolve courseId from courseCode if courseId is not provided
+        if (courseId == null && courseCode != null && !courseCode.isBlank()) {
+            courseId = resolveCourseUnitId(courseCode, courseName);
+        }
+
+        if (courseId == null) {
+            return ResponseEntity.badRequest().body(Map.of("detail", "course_id or courseCode is required"));
         }
 
         List<Enrollment> existing = enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId);
@@ -114,9 +135,18 @@ public class EnrollmentController {
         for (Map<String, Object> item : items) {
             Long studentId = toLong(item.getOrDefault("studentId", item.get("student_id")));
             Long courseId = toLong(item.getOrDefault("courseId", item.get("course_id")));
-            String paperType = String.valueOf(item.getOrDefault("paperType", item.getOrDefault("paper_type", "normal")));
+            String courseCode = toStr(item.getOrDefault("courseCode", item.get("course_code")));
+            String courseName = toStr(item.getOrDefault("courseName", item.get("course_name")));
+            String paperType = toStr(item.getOrDefault("paperType", item.getOrDefault("paper_type", "normal")));
 
-            if (studentId == null || courseId == null) continue;
+            if (studentId == null) continue;
+
+            // Resolve courseId from courseCode if courseId is not provided
+            if (courseId == null && courseCode != null && !courseCode.isBlank()) {
+                courseId = resolveCourseUnitId(courseCode, courseName);
+            }
+
+            if (courseId == null) continue;
 
             List<Enrollment> existing = enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId);
             if (!existing.isEmpty()) continue;
@@ -215,5 +245,29 @@ public class EnrollmentController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private String toStr(Object val) {
+        if (val == null) return null;
+        String s = String.valueOf(val);
+        return s.isBlank() || "null".equals(s) ? null : s;
+    }
+
+    private Long resolveCourseUnitId(String code, String name) {
+        // Look up existing course unit by code
+        var existing = courseUnitRepository.findByCode(code);
+        if (existing.isPresent()) {
+            return existing.get().getId();
+        }
+
+        // Auto-create course unit record if it doesn't exist
+        CourseUnit unit = new CourseUnit();
+        unit.setCode(code);
+        unit.setName(name != null ? name : code);
+        unit.setCredits(0);
+        unit.setSemester("semester 1");
+        unit.setYear("1");
+        unit = courseUnitRepository.save(unit);
+        return unit.getId();
     }
 }

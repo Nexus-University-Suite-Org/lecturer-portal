@@ -63,6 +63,25 @@ public class AuthService {
     }
 
     @Transactional
+    public void changePassword(Long uid, String currentPassword, String newPassword) {
+        if (uid == null) {
+            throw new RuntimeException("User not identified");
+        }
+        if (currentPassword == null || currentPassword.isBlank()
+                || newPassword == null || newPassword.isBlank()) {
+            throw new RuntimeException("Current and new passwords are required");
+        }
+        Lecturer lecturer = lecturerRepository.findById(uid)
+                .orElseThrow(() -> new RuntimeException("Lecturer not found"));
+        if (lecturer.getPasswordHash() == null
+                || !passwordEncoder.matches(currentPassword, lecturer.getPasswordHash())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+        lecturer.setPasswordHash(passwordEncoder.encode(newPassword));
+        lecturerRepository.save(lecturer);
+    }
+
+    @Transactional
     public void setPassword(String email, String newPassword, String token,
                             String firstName, String lastName, String department, String specialization) {
         // Verify the token

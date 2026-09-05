@@ -8,6 +8,7 @@ import {
   BookOpen,
   Trophy,
   Award,
+  Calendar,
 } from "lucide-react";
 
 import { LecturerBottomNav } from "@/components/layout/LecturerBottomNav";
@@ -44,6 +45,19 @@ const rise = {
     transition: { delay: i * 0.05 },
   }),
 };
+
+const buildGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const todayLabel = new Date().toLocaleDateString(undefined, {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
 
 export default function LecturerAnalytics() {
   const { user } = useAuth();
@@ -316,55 +330,75 @@ export default function LecturerAnalytics() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "excellent":
-        return "bg-emerald-500/20 text-emerald-700 border-emerald-300/30";
+        return "bg-emerald/15 text-emerald border-emerald/40";
       case "good":
-        return "bg-blue-500/20 text-blue-700 border-blue-300/30";
+        return "bg-blue-500/15 text-blue-600 border-blue-500/30";
       case "warning":
-        return "bg-amber-500/20 text-amber-700 border-amber-300/30";
+        return "bg-amber/15 text-amber-dark border-amber/40";
       case "at-risk":
-        return "bg-red-500/20 text-red-700 border-red-300/30";
+        return "bg-red-500/15 text-red-600 border-red-500/30";
       default:
-        return "bg-muted/60";
+        return "bg-muted/60 text-muted-foreground border-border/60";
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28">
-
-
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -top-24 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute top-40 -right-20 h-72 w-72 rounded-full bg-teal/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-lavender/10 blur-3xl" />
+      </div>
       <main className="px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
+          className="space-y-6"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-primary" />
+          <div className="relative overflow-hidden rounded-3xl hero-gradient p-6 sm:p-8">
+            <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-teal/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="relative">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Analytics & Insights
+              </span>
+              <h1 className="mt-4 text-3xl font-display font-bold text-white sm:text-4xl">
+                {buildGreeting()}, {user?.email?.split("@")[0] || "Lecturer"}
+              </h1>
+              <p className="mt-1.5 text-sm font-medium text-white/80">
+                Track performance across your courses
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {todayLabel}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  {analytics.length} courses
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber px-3 py-1.5 text-navy">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {overallStats.atRiskStudents} at risk
+                </span>
+                <div className="ml-auto flex items-center gap-1 rounded-full bg-white/10 p-1 backdrop-blur-sm">
+                  {["week", "month", "semester"].map((range) => (
+                    <button
+                      key={range}
+                      onClick={() => setTimeRange(range)}
+                      className={`rounded-full px-3 py-1 font-semibold capitalize transition-all ${
+                        timeRange === range
+                          ? "bg-white/20 text-white"
+                          : "text-white/70 hover:text-white"
+                      }`}
+                    >
+                      {range}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">Analytics & Insights</h1>
-                <p className="text-sm text-muted-foreground">
-                  Track performance across your courses
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {["week", "month", "semester"].map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setTimeRange(range)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    timeRange === range
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted/60 text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {range.charAt(0).toUpperCase() + range.slice(1)}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -373,82 +407,75 @@ export default function LecturerAnalytics() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500/10 border border-red-300/30 rounded-lg p-4"
+              className="rounded-xl border border-red-500/30 bg-red-500/10 p-4"
             >
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600" />
-                <p className="text-red-700 font-medium">{error}</p>
+                <p className="text-sm font-medium text-red-600">{error}</p>
               </div>
             </motion.div>
           )}
 
           {/* Key Metrics */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-            >
-              <Card className="bg-primary/10 border-primary/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Avg Enrollment
-                  </p>
-                  <p className="text-2xl font-bold text-primary">
-                    {loading ? "..." : overallStats.avgEnrollment}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card className="bg-emerald-500/10 border-emerald-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">Class Avg GPA</p>
-                  <p className="text-2xl font-bold text-emerald-700">
-                    {loading ? "..." : overallStats.avgGPA}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <Card className="bg-blue-500/10 border-blue-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Avg Attendance
-                  </p>
-                  <p className="text-2xl font-bold text-blue-700">
-                    {loading ? "..." : `${overallStats.avgAttendance}%`}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="bg-red-500/10 border-red-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    At-Risk Students
-                  </p>
-                  <p className="text-2xl font-bold text-red-700">
-                    {loading ? "..." : overallStats.atRiskStudents}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {[
+              {
+                label: "Avg Enrollment",
+                value: loading ? "..." : overallStats.avgEnrollment,
+                accent: "from-primary to-secondary",
+                iconBg: "bg-primary/10 text-primary",
+                Icon: Users,
+              },
+              {
+                label: "Class Avg GPA",
+                value: loading ? "..." : overallStats.avgGPA,
+                accent: "from-teal to-emerald",
+                iconBg: "bg-emerald/15 text-emerald",
+                Icon: Award,
+              },
+              {
+                label: "Avg Attendance",
+                value: loading
+                  ? "..."
+                  : `${overallStats.avgAttendance}%`,
+                accent: "from-blue-500 to-blue-600",
+                iconBg: "bg-blue-500/15 text-blue-600",
+                Icon: TrendingUp,
+              },
+              {
+                label: "At-Risk Students",
+                value: loading ? "..." : overallStats.atRiskStudents,
+                accent: "from-red-500 to-orange-500",
+                iconBg: "bg-red-500/15 text-red-600",
+                Icon: AlertCircle,
+              },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 + i * 0.05 }}
+              >
+                <Card className="overflow-hidden border-border/60 bg-card/70 backdrop-blur-lg">
+                  <div className={`h-1 bg-gradient-to-r ${s.accent}`} />
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {s.label}
+                        </p>
+                        <p className="mt-1 text-3xl font-bold text-foreground">
+                          {s.value}
+                        </p>
+                      </div>
+                      <div className={`rounded-xl p-2.5 ${s.iconBg}`}>
+                        <s.Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
 
@@ -467,14 +494,20 @@ export default function LecturerAnalytics() {
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <BarChart3 className="h-6 w-6 animate-pulse text-primary" />
+                  </div>
+                  <p className="text-sm font-medium">
                     Loading course analytics...
                   </p>
                 </div>
               ) : analytics.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center text-muted-foreground">
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <BookOpen className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium">
                     No courses assigned yet.
                   </p>
                 </div>
@@ -489,22 +522,27 @@ export default function LecturerAnalytics() {
                     className="rounded-lg border border-border/60 p-4 space-y-3"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-foreground">
-                          {course.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {course.enrollment} students
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                          <BookOpen className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">
+                            {course.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {course.enrollment} students
+                          </p>
+                        </div>
                       </div>
                       <Badge
                         variant="outline"
                         className={
                           course.trend === "up"
-                            ? "bg-emerald-500/20 text-emerald-700 border-emerald-300/30"
+                            ? "bg-emerald/15 text-emerald border-emerald/40"
                             : course.trend === "down"
-                              ? "bg-red-500/20 text-red-700 border-red-300/30"
-                              : "bg-amber-500/20 text-amber-700 border-amber-300/30"
+                              ? "bg-red-500/15 text-red-600 border-red-500/30"
+                              : "bg-amber/15 text-amber-dark border-amber/40"
                         }
                       >
                         {course.trend === "up"
@@ -548,7 +586,7 @@ export default function LecturerAnalytics() {
                             initial={{ width: 0 }}
                             animate={{ width: `${course.attendanceRate}%` }}
                             transition={{ delay: 0.5, duration: 1 }}
-                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600"
+                            className="h-full bg-gradient-to-r from-teal to-emerald"
                           />
                         </div>
                       </div>
@@ -574,13 +612,13 @@ export default function LecturerAnalytics() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex items-end gap-2">
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="flex-1"
+                          className="flex-1 gap-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
                           onClick={() => handleViewCourseDetails(course.id)}
                         >
+                          <BarChart3 className="h-4 w-4" />
                           View Details
                         </Button>
                       </div>
@@ -607,14 +645,20 @@ export default function LecturerAnalytics() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <Users className="h-6 w-6 animate-pulse text-primary" />
+                  </div>
+                  <p className="text-sm font-medium">
                     Loading student insights...
                   </p>
                 </div>
               ) : insights.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center text-muted-foreground">
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium">
                     No student data available.
                   </p>
                 </div>
@@ -654,7 +698,7 @@ export default function LecturerAnalytics() {
                             student.status.slice(1)}
                         </Badge>
                         {student.trend === "up" ? (
-                          <TrendingUp className="h-4 w-4 text-emerald-600" />
+                          <TrendingUp className="h-4 w-4 text-emerald" />
                         ) : (
                           <motion.div
                             animate={{ y: [0, 2, 0] }}
@@ -678,16 +722,16 @@ export default function LecturerAnalytics() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
         >
-          <Card className="border-amber-300/30 bg-amber-500/5">
+          <Card className="border-amber/40 bg-amber/10">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-amber-700">
+              <CardTitle className="flex items-center gap-2 text-amber-dark">
                 <Award className="h-5 w-5" />
                 Recommendations
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex gap-3 p-3 rounded-lg bg-muted/40">
-                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                <AlertCircle className="h-5 w-5 text-amber-dark flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-foreground">
                     Follow up with at-risk students
@@ -700,7 +744,7 @@ export default function LecturerAnalytics() {
               </div>
 
               <div className="flex gap-3 p-3 rounded-lg bg-muted/40">
-                <Trophy className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                <Trophy className="h-5 w-5 text-emerald flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-foreground">
                     Recognize top performers

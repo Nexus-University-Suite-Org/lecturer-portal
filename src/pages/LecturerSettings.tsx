@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Sparkles,
   Code2,
+  Calendar,
 } from "lucide-react";
 
 import { LecturerBottomNav } from "@/components/layout/LecturerBottomNav";
@@ -44,6 +45,19 @@ const itemVariants = {
     transition: { delay: i * 0.05 },
   }),
 };
+
+const buildGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const todayLabel = new Date().toLocaleDateString(undefined, {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
 
 export default function LecturerSettings() {
   const { profile, user } = useAuth();
@@ -68,6 +82,7 @@ export default function LecturerSettings() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [bio, setBio] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savedProfile, setSavedProfile] = useState<any>(null);
 
   // Appearance preferences state
   const [colorTheme, setColorTheme] = useState("Auto");
@@ -116,70 +131,96 @@ export default function LecturerSettings() {
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
   const [loginAlerts, setLoginAlerts] = useState(true);
 
-  // Load profile data on mount
+  const hydrateProfile = (p: any) => {
+    if (!p) return;
+    setFullName(p.full_name || "");
+    setEmail(p.email || user?.email || "");
+    setDepartment(p.department || "");
+    setSpecialization(p.specialization || "");
+    setOfficeLocation(p.office_location || "");
+    setOfficeHours(p.office_hours || "");
+    setOfficePhone(p.office_phone || "");
+    setPhoneNumber(p.phone_number || "");
+    setBio(p.bio || "");
+
+    setColorTheme(p.color_theme || "Auto");
+    setDashboardLayout(p.dashboard_layout || "Compact");
+    setFontSize(p.font_size || "Medium");
+    setLanguage(p.language || "English");
+    setShowSidebar(p.show_sidebar !== false);
+    setAnimateTransitions(p.animate_transitions !== false);
+    setCompactMode(p.compact_mode || false);
+    setShowTooltips(p.show_tooltips !== false);
+
+    setClassDuration(
+      p.class_duration != null ? String(p.class_duration) : "120",
+    );
+    setTeachingMode(p.teaching_mode || "hybrid");
+    setMaxStudents(p.max_students != null ? String(p.max_students) : "45");
+    setGradingScale(p.grading_scale || "Numerical (0-100)");
+    setAttendanceTracking(p.attendance_tracking !== false);
+    setLateSubmissions(p.late_submissions || false);
+    setAssignmentRubrics(p.assignment_rubrics !== false);
+    setPeerReview(p.peer_review || false);
+
+    setEmailNewSubmissions(p.email_new_submissions !== false);
+    setEmailGradeRequests(p.email_grade_requests !== false);
+    setEmailDeadlines(p.email_deadlines !== false);
+    setEmailMessages(p.email_messages !== false);
+    setEmailAnnouncements(p.email_announcements || false);
+    setPushNotifications(p.push_notifications !== false);
+    setInAppNotifications(p.in_app_notifications !== false);
+    setDigestEmail(p.digest_email || false);
+
+    setDefaultGradingScale(
+      p.default_grading_scale || "Numerical (0-100)",
+    );
+    setLatePenalty(p.late_penalty != null ? String(p.late_penalty) : "5");
+    setMinPassingGrade(
+      p.min_passing_grade != null ? String(p.min_passing_grade) : "40",
+    );
+    setRoundingMethod(p.rounding_method || "Round Down");
+    setShowFeedback(p.show_feedback !== false);
+    setAllowDisputes(p.allow_disputes !== false);
+    setPublishByDate(p.publish_by_date || false);
+    setShowClassAverage(p.show_class_average !== false);
+
+    setProfileVisible(p.profile_visible !== false);
+    setShowEmail(p.show_email !== false);
+    setTwoFactorAuth(p.two_factor_auth || false);
+    setLoginAlerts(p.login_alerts !== false);
+  };
+
+  // Quick local (login) profile hydration as a fallback
   useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || "");
-      setDepartment(profile.department || "");
-      setSpecialization((profile as any).specialization || "");
-      setOfficeLocation((profile as any).office_location || "");
-      setOfficeHours((profile as any).office_hours || "");
-      setOfficePhone((profile as any).office_phone || "");
-      setPhoneNumber((profile as any).phone_number || "");
-      setBio(profile.bio || "");
-
-      // Load appearance preferences
-      setColorTheme((profile as any).color_theme || "Auto");
-      setDashboardLayout((profile as any).dashboard_layout || "Compact");
-      setFontSize((profile as any).font_size || "Medium");
-      setLanguage((profile as any).language || "English");
-      setShowSidebar((profile as any).show_sidebar !== false);
-      setAnimateTransitions((profile as any).animate_transitions !== false);
-      setCompactMode((profile as any).compact_mode || false);
-      setShowTooltips((profile as any).show_tooltips !== false);
-
-      // Load teaching preferences
-      setClassDuration((profile as any).class_duration || "120");
-      setTeachingMode((profile as any).teaching_mode || "hybrid");
-      setMaxStudents((profile as any).max_students || "45");
-      setGradingScale((profile as any).grading_scale || "Numerical (0-100)");
-      setAttendanceTracking((profile as any).attendance_tracking !== false);
-      setLateSubmissions((profile as any).late_submissions || false);
-      setAssignmentRubrics((profile as any).assignment_rubrics !== false);
-      setPeerReview((profile as any).peer_review || false);
-
-      // Load notification preferences
-      setEmailNewSubmissions((profile as any).email_new_submissions !== false);
-      setEmailGradeRequests((profile as any).email_grade_requests !== false);
-      setEmailDeadlines((profile as any).email_deadlines !== false);
-      setEmailMessages((profile as any).email_messages !== false);
-      setEmailAnnouncements((profile as any).email_announcements || false);
-      setPushNotifications((profile as any).push_notifications !== false);
-      setInAppNotifications((profile as any).in_app_notifications !== false);
-      setDigestEmail((profile as any).digest_email || false);
-
-      // Load grading preferences
-      setDefaultGradingScale(
-        (profile as any).default_grading_scale || "Numerical (0-100)",
-      );
-      setLatePenalty((profile as any).late_penalty || "5");
-      setMinPassingGrade((profile as any).min_passing_grade || "40");
-      setRoundingMethod((profile as any).rounding_method || "Round Down");
-      setShowFeedback((profile as any).show_feedback !== false);
-      setAllowDisputes((profile as any).allow_disputes !== false);
-      setPublishByDate((profile as any).publish_by_date || false);
-      setShowClassAverage((profile as any).show_class_average !== false);
-
-      // Load privacy preferences
-      setProfileVisible((profile as any).profile_visible !== false);
-      setShowEmail((profile as any).show_email !== false);
-      setTwoFactorAuth((profile as any).two_factor_auth || false);
-      setLoginAlerts((profile as any).login_alerts !== false);
-    }
+    hydrateProfile(profile);
     if (user?.email) {
       setEmail(user.email);
     }
   }, [profile, user]);
+
+  // Load persisted preferences from the backend so saved values are restored
+  useEffect(() => {
+    if (!user?.uid) return;
+    (async () => {
+      try {
+        const data: any = await getBackend(
+          `/api/profiles/by-user/${user.uid}`,
+          true,
+        );
+        if (data && typeof data === "object") {
+          setSavedProfile(data);
+          hydrateProfile(data);
+        }
+      } catch (error) {
+        console.warn(
+          "[LecturerSettings] Failed to load profile from backend:",
+          error,
+        );
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const settingsTabs = [
     { id: "profile", label: "Profile", icon: User },
@@ -325,6 +366,16 @@ export default function LecturerSettings() {
     setUpdatingPassword(true);
 
     try {
+      await postBackend(
+        "/api/v1/auth/change-password",
+        {
+          uid: user?.uid,
+          current_password: currentPassword,
+          new_password: newPassword,
+        },
+        true,
+      );
+
       toast({
         title: "Password Updated",
         description: "Your password has been successfully changed",
@@ -346,40 +397,52 @@ export default function LecturerSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28 md:pb-8">
-      {/* Animated background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-80 h-80 bg-gradient-to-br from-primary/15 to-secondary/10 blur-3xl rounded-full opacity-60" />
-        <div className="absolute top-1/2 -right-40 w-96 h-96 bg-gradient-to-bl from-secondary/10 via-primary/5 to-transparent blur-3xl rounded-full opacity-40" />
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28">
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -top-24 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute top-40 -right-20 h-72 w-72 rounded-full bg-teal/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-lavender/10 blur-3xl" />
       </div>
 
-
-
-      <main className="container py-8 relative">
+      <main className="px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-6xl mx-auto"
         >
-          {/* Header */}
-          <div className="mb-8 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-              <SettingsIcon className="h-4 w-4" />
-              <span>Settings</span>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-foreground font-semibold">
-                {settingsTabs.find((t) => t.id === activeTab)?.label}
+          {/* Hero */}
+          <div className="relative overflow-hidden rounded-3xl hero-gradient p-6 sm:p-8">
+            <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-teal/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="relative">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                <SettingsIcon className="h-3.5 w-3.5" />
+                Settings & Preferences
               </span>
+              <h1 className="mt-4 text-3xl font-display font-bold text-white sm:text-4xl">
+                {buildGreeting()}, {user?.email?.split("@")[0] || "Lecturer"}
+              </h1>
+              <p className="mt-1.5 text-sm font-medium text-white/80">
+                Customize your teaching experience and manage your account
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {todayLabel}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  {settingsTabs.find((t) => t.id === activeTab)?.label}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                  <Shield className="h-3.5 w-3.5" />
+                  {twoFactorAuth ? "2FA on" : "2FA off"}
+                </span>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground">
-              Settings & Preferences
-            </h1>
-            <p className="text-muted-foreground">
-              Customize your teaching experience and manage your account
-            </p>
           </div>
+        </motion.div>
 
-          <div className="grid gap-6 lg:grid-cols-4">
+        <div className="mt-6 grid gap-6 lg:grid-cols-4">
             {/* Sidebar Navigation */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -387,10 +450,10 @@ export default function LecturerSettings() {
               transition={{ delay: 0.1 }}
               className="lg:col-span-1"
             >
-              <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/10 backdrop-blur-lg sticky top-20">
-                <CardHeader className="pb-3 border-b border-orange-500/20">
+              <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg sticky top-20">
+                <CardHeader className="pb-3 border-b border-border/60">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-orange-500" />
+                    <Zap className="h-4 w-4 text-primary" />
                     Sections
                   </CardTitle>
                 </CardHeader>
@@ -406,14 +469,14 @@ export default function LecturerSettings() {
                         onClick={() => setActiveTab(tab.id)}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left ${
                           isActive
-                            ? "bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-600 border border-orange-500/40 shadow-lg"
+                            ? "bg-gradient-to-r from-primary to-secondary text-white border border-primary/30 shadow-lg"
                             : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         <Icon className="h-4 w-4 flex-shrink-0" />
                         <span className="font-medium">{tab.label}</span>
                         {isActive && (
-                          <ChevronRight className="h-4 w-4 ml-auto text-orange-500" />
+                          <ChevronRight className="h-4 w-4 ml-auto text-white" />
                         )}
                       </motion.button>
                     );
@@ -436,10 +499,10 @@ export default function LecturerSettings() {
                   animate={{ opacity: 1 }}
                   className="space-y-6"
                 >
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-orange-600/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5 text-orange-500" />
+                        <User className="h-5 w-5 text-primary" />
                         Profile Information
                       </CardTitle>
                     </CardHeader>
@@ -459,7 +522,7 @@ export default function LecturerSettings() {
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
                           placeholder="Enter your full name"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
 
@@ -478,7 +541,7 @@ export default function LecturerSettings() {
                           value={email}
                           disabled
                           placeholder="your.email@university.edu"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all opacity-60 cursor-not-allowed"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all opacity-60 cursor-not-allowed"
                         />
                       </motion.div>
 
@@ -497,7 +560,7 @@ export default function LecturerSettings() {
                           value={department}
                           onChange={(e) => setDepartment(e.target.value)}
                           placeholder="Your department"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
 
@@ -516,16 +579,16 @@ export default function LecturerSettings() {
                           value={specialization}
                           onChange={(e) => setSpecialization(e.target.value)}
                           placeholder="Your specialization"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-orange-500" />
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
                         Professional Details
                       </CardTitle>
                     </CardHeader>
@@ -545,7 +608,7 @@ export default function LecturerSettings() {
                           value={officeLocation}
                           onChange={(e) => setOfficeLocation(e.target.value)}
                           placeholder="Building A, Room 204"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
 
@@ -564,7 +627,7 @@ export default function LecturerSettings() {
                           value={officeHours}
                           onChange={(e) => setOfficeHours(e.target.value)}
                           placeholder="Mon-Fri, 2:00-4:00 PM"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
 
@@ -583,7 +646,7 @@ export default function LecturerSettings() {
                           value={officePhone}
                           onChange={(e) => setOfficePhone(e.target.value)}
                           placeholder="+1 (555) 123-4567"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
 
@@ -602,7 +665,7 @@ export default function LecturerSettings() {
                           value={phoneNumber}
                           onChange={(e) => setPhoneNumber(e.target.value)}
                           placeholder="+256 700 000 000"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
 
@@ -621,7 +684,7 @@ export default function LecturerSettings() {
                           onChange={(e) => setBio(e.target.value)}
                           rows={3}
                           placeholder="Dedicated educator with 15+ years of experience"
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all resize-none"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none"
                         />
                       </motion.div>
                     </CardContent>
@@ -712,10 +775,10 @@ export default function LecturerSettings() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-orange-500" />
+                        <Sparkles className="h-5 w-5 text-primary" />
                         Class Management
                       </CardTitle>
                     </CardHeader>
@@ -754,7 +817,7 @@ export default function LecturerSettings() {
                             type="checkbox"
                             checked={option.checked}
                             onChange={(e) => option.setter(e.target.checked)}
-                            className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50 cursor-pointer"
+                            className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40 cursor-pointer"
                           />
                           <span className="font-medium text-foreground">
                             {option.label}
@@ -773,10 +836,10 @@ export default function LecturerSettings() {
                   animate={{ opacity: 1 }}
                   className="space-y-6"
                 >
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Bell className="h-5 w-5 text-orange-500" />
+                        <Bell className="h-5 w-5 text-primary" />
                         Email Notifications
                       </CardTitle>
                     </CardHeader>
@@ -820,7 +883,7 @@ export default function LecturerSettings() {
                             type="checkbox"
                             checked={option.checked}
                             onChange={(e) => option.setter(e.target.checked)}
-                            className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                            className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                           />
                           <span className="font-medium text-foreground">
                             {option.label}
@@ -830,10 +893,10 @@ export default function LecturerSettings() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Volume2 className="h-5 w-5 text-orange-500" />
+                        <Volume2 className="h-5 w-5 text-primary" />
                         Other Notifications
                       </CardTitle>
                     </CardHeader>
@@ -867,7 +930,7 @@ export default function LecturerSettings() {
                             type="checkbox"
                             checked={option.checked}
                             onChange={(e) => option.setter(e.target.checked)}
-                            className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                            className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                           />
                           <span className="font-medium text-foreground">
                             {option.label}
@@ -886,10 +949,10 @@ export default function LecturerSettings() {
                   animate={{ opacity: 1 }}
                   className="space-y-6"
                 >
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Award className="h-5 w-5 text-orange-500" />
+                        <Award className="h-5 w-5 text-primary" />
                         Grading System
                       </CardTitle>
                     </CardHeader>
@@ -941,7 +1004,7 @@ export default function LecturerSettings() {
                             <select
                               value={field.value}
                               onChange={(e) => field.setter(e.target.value)}
-                              className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                              className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                             >
                               {field.options?.map((option) => (
                                 <option key={option} value={option}>
@@ -954,7 +1017,7 @@ export default function LecturerSettings() {
                               type="text"
                               value={field.value}
                               onChange={(e) => field.setter(e.target.value)}
-                              className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                              className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                             />
                           )}
                         </motion.div>
@@ -962,10 +1025,10 @@ export default function LecturerSettings() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-orange-500" />
+                        <FileText className="h-5 w-5 text-primary" />
                         Grade Display
                       </CardTitle>
                     </CardHeader>
@@ -1004,7 +1067,7 @@ export default function LecturerSettings() {
                             type="checkbox"
                             checked={option.checked}
                             onChange={(e) => option.setter(e.target.checked)}
-                            className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                            className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                           />
                           <span className="font-medium text-foreground">
                             {option.label}
@@ -1023,10 +1086,10 @@ export default function LecturerSettings() {
                   animate={{ opacity: 1 }}
                   className="space-y-6"
                 >
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Palette className="h-5 w-5 text-orange-500" />
+                        <Palette className="h-5 w-5 text-primary" />
                         Display Preferences
                       </CardTitle>
                     </CardHeader>
@@ -1044,7 +1107,7 @@ export default function LecturerSettings() {
                         <select
                           value={colorTheme}
                           onChange={(e) => setColorTheme(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         >
                           <option>Auto</option>
                           <option>Light</option>
@@ -1065,7 +1128,7 @@ export default function LecturerSettings() {
                         <select
                           value={dashboardLayout}
                           onChange={(e) => setDashboardLayout(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         >
                           <option>Compact</option>
                           <option>Comfortable</option>
@@ -1086,7 +1149,7 @@ export default function LecturerSettings() {
                         <select
                           value={fontSize}
                           onChange={(e) => setFontSize(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         >
                           <option>Small</option>
                           <option>Medium</option>
@@ -1107,7 +1170,7 @@ export default function LecturerSettings() {
                         <select
                           value={language}
                           onChange={(e) => setLanguage(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         >
                           <option>English</option>
                           <option>Spanish</option>
@@ -1118,10 +1181,10 @@ export default function LecturerSettings() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Eye className="h-5 w-5 text-orange-500" />
+                        <Eye className="h-5 w-5 text-primary" />
                         Interface Options
                       </CardTitle>
                     </CardHeader>
@@ -1137,7 +1200,7 @@ export default function LecturerSettings() {
                           type="checkbox"
                           checked={showSidebar}
                           onChange={(e) => setShowSidebar(e.target.checked)}
-                          className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                          className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                         />
                         <span className="font-medium text-foreground">
                           Show Sidebar on Home
@@ -1157,7 +1220,7 @@ export default function LecturerSettings() {
                           onChange={(e) =>
                             setAnimateTransitions(e.target.checked)
                           }
-                          className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                          className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                         />
                         <span className="font-medium text-foreground">
                           Animate Transitions
@@ -1175,7 +1238,7 @@ export default function LecturerSettings() {
                           type="checkbox"
                           checked={compactMode}
                           onChange={(e) => setCompactMode(e.target.checked)}
-                          className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                          className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                         />
                         <span className="font-medium text-foreground">
                           Compact Mode
@@ -1193,7 +1256,7 @@ export default function LecturerSettings() {
                           type="checkbox"
                           checked={showTooltips}
                           onChange={(e) => setShowTooltips(e.target.checked)}
-                          className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                          className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                         />
                         <span className="font-medium text-foreground">
                           Show Helper Tooltips
@@ -1211,10 +1274,10 @@ export default function LecturerSettings() {
                   animate={{ opacity: 1 }}
                   className="space-y-6"
                 >
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Lock className="h-5 w-5 text-orange-500" />
+                        <Lock className="h-5 w-5 text-primary" />
                         Password & Security
                       </CardTitle>
                     </CardHeader>
@@ -1234,7 +1297,7 @@ export default function LecturerSettings() {
                           placeholder="Enter your current password"
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
                       <motion.div
@@ -1252,7 +1315,7 @@ export default function LecturerSettings() {
                           placeholder="Enter new password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
                       <motion.div
@@ -1270,7 +1333,7 @@ export default function LecturerSettings() {
                           placeholder="Confirm new password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-lg border border-orange-500/20 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                          className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-muted/30 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                         />
                       </motion.div>
                       <motion.button
@@ -1280,17 +1343,17 @@ export default function LecturerSettings() {
                         custom={3}
                         onClick={handlePasswordUpdate}
                         disabled={updatingPassword}
-                        className="w-full px-4 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber to-amber-dark text-navy font-semibold shadow-glow transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {updatingPassword ? "Updating..." : "Update Password"}
                       </motion.button>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-500/20 bg-gradient-to-br from-card/90 to-orange-900/5 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-b border-orange-500/20">
+                  <Card className="border-border/60 bg-card/70 backdrop-blur-lg backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-teal/10 border-b border-border/60">
                       <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-orange-500" />
+                        <Shield className="h-5 w-5 text-primary" />
                         Account Privacy
                       </CardTitle>
                     </CardHeader>
@@ -1329,7 +1392,7 @@ export default function LecturerSettings() {
                             type="checkbox"
                             checked={option.checked}
                             onChange={(e) => option.setter(e.target.checked)}
-                            className="w-5 h-5 rounded border-orange-500/50 text-orange-500 focus:ring-2 focus:ring-orange-500/50"
+                            className="w-5 h-5 rounded border-primary/50 text-primary focus:ring-2 focus:ring-primary/40"
                           />
                           <span className="font-medium text-foreground">
                             {option.label}
@@ -1339,9 +1402,9 @@ export default function LecturerSettings() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-orange-500/40 bg-gradient-to-br from-card/90 to-orange-900/10 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
-                    <CardHeader className="bg-gradient-to-r from-orange-500/15 to-amber-500/15 border-b border-orange-500/30">
-                      <CardTitle className="flex items-center gap-2 text-orange-600">
+                  <Card className="border-red-500/30 bg-card/70 backdrop-blur-lg overflow-hidden hover:shadow-xl transition-all">
+                    <CardHeader className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-b border-red-500/30">
+                      <CardTitle className="flex items-center gap-2 text-red-600">
                         <AlertCircle className="h-5 w-5" />
                         Danger Zone
                       </CardTitle>
@@ -1366,7 +1429,7 @@ export default function LecturerSettings() {
               {/* Save Button */}
               <div className="sticky bottom-20 md:bottom-0 flex gap-3">
                 <Button
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg hover:shadow-xl transition-all gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-gradient-to-r from-amber to-amber-dark text-navy shadow-glow hover:opacity-90 transition-all gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleSave}
                   disabled={savingProfile}
                 >
@@ -1376,112 +1439,7 @@ export default function LecturerSettings() {
                 <Button
                   variant="outline"
                   className="border-border/60 hover:bg-muted/50 gap-2"
-                  onClick={() => {
-                    if (profile) {
-                      // Reset profile fields
-                      setFullName(profile.full_name || "");
-                      setDepartment(profile.department || "");
-                      setSpecialization((profile as any).specialization || "");
-                      setOfficeLocation((profile as any).office_location || "");
-                      setOfficeHours((profile as any).office_hours || "");
-                      setOfficePhone((profile as any).office_phone || "");
-                      setPhoneNumber((profile as any).phone_number || "");
-                      setBio(profile.bio || "");
-
-                      // Reset appearance preferences
-                      setColorTheme((profile as any).color_theme || "Auto");
-                      setDashboardLayout(
-                        (profile as any).dashboard_layout || "Compact",
-                      );
-                      setFontSize((profile as any).font_size || "Medium");
-                      setLanguage((profile as any).language || "English");
-                      setShowSidebar((profile as any).show_sidebar !== false);
-                      setAnimateTransitions(
-                        (profile as any).animate_transitions !== false,
-                      );
-                      setCompactMode((profile as any).compact_mode || false);
-                      setShowTooltips((profile as any).show_tooltips !== false);
-
-                      // Reset teaching preferences
-                      setClassDuration(
-                        (profile as any).class_duration || "120",
-                      );
-                      setTeachingMode(
-                        (profile as any).teaching_mode || "hybrid",
-                      );
-                      setMaxStudents((profile as any).max_students || "45");
-                      setGradingScale(
-                        (profile as any).grading_scale || "Numerical (0-100)",
-                      );
-                      setAttendanceTracking(
-                        (profile as any).attendance_tracking !== false,
-                      );
-                      setLateSubmissions(
-                        (profile as any).late_submissions || false,
-                      );
-                      setAssignmentRubrics(
-                        (profile as any).assignment_rubrics !== false,
-                      );
-                      setPeerReview((profile as any).peer_review || false);
-
-                      // Reset notification preferences
-                      setEmailNewSubmissions(
-                        (profile as any).email_new_submissions !== false,
-                      );
-                      setEmailGradeRequests(
-                        (profile as any).email_grade_requests !== false,
-                      );
-                      setEmailDeadlines(
-                        (profile as any).email_deadlines !== false,
-                      );
-                      setEmailMessages(
-                        (profile as any).email_messages !== false,
-                      );
-                      setEmailAnnouncements(
-                        (profile as any).email_announcements || false,
-                      );
-                      setPushNotifications(
-                        (profile as any).push_notifications !== false,
-                      );
-                      setInAppNotifications(
-                        (profile as any).in_app_notifications !== false,
-                      );
-                      setDigestEmail((profile as any).digest_email || false);
-
-                      // Reset grading preferences
-                      setDefaultGradingScale(
-                        (profile as any).default_grading_scale ||
-                          "Numerical (0-100)",
-                      );
-                      setLatePenalty((profile as any).late_penalty || "5");
-                      setMinPassingGrade(
-                        (profile as any).min_passing_grade || "40",
-                      );
-                      setRoundingMethod(
-                        (profile as any).rounding_method || "Round Down",
-                      );
-                      setShowFeedback((profile as any).show_feedback !== false);
-                      setAllowDisputes(
-                        (profile as any).allow_disputes !== false,
-                      );
-                      setPublishByDate(
-                        (profile as any).publish_by_date || false,
-                      );
-                      setShowClassAverage(
-                        (profile as any).show_class_average !== false,
-                      );
-
-                      // Reset privacy preferences
-                      setProfileVisible(
-                        (profile as any).profile_visible !== false,
-                      );
-                      setShowEmail((profile as any).show_email !== false);
-                      setTwoFactorAuth(
-                        (profile as any).two_factor_auth || false,
-                      );
-                      setLoginAlerts((profile as any).login_alerts !== false);
-                    }
-                  }}
+                  onClick={() => hydrateProfile(savedProfile || profile)}
                 >
                   <RotateCcw className="h-4 w-4" />
                   Reset
@@ -1494,7 +1452,7 @@ export default function LecturerSettings() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="fixed bottom-32 md:bottom-8 right-6 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2"
+                  className="fixed bottom-32 md:bottom-8 right-6 bg-emerald text-navy px-6 py-3 rounded-lg shadow-lg flex items-center gap-2"
                 >
                   <CheckCircle2 className="h-5 w-5" />
                   Settings saved successfully!
@@ -1502,7 +1460,6 @@ export default function LecturerSettings() {
               )}
             </motion.div>
           </div>
-        </motion.div>
       </main>
 
       <LecturerBottomNav />

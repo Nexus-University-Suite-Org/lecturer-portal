@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MessageDraftRepository extends JpaRepository<MessageDraft, Long> {
     List<MessageDraft> findByUserIdOrderByCreatedAtDesc(Long userId);
+    void deleteByUserIdOrToUserId(Long userId, Long toUserId);
 }

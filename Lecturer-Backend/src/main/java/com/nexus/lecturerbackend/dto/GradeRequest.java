@@ -12,5 +12,8 @@ public record GradeRequest(
         Double finalExam,
         Double total,
         String grade,
-        Double gp) {
+        Double gp,
+        String academicYear,
+        String semester,
+        String marksJson) {
 }

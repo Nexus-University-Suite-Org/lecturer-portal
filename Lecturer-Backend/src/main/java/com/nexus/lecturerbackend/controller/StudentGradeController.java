@@ -92,6 +92,9 @@ public class StudentGradeController {
         grade.setTotal(req.total());
         grade.setGrade(req.grade());
         grade.setGp(req.gp());
+        if (req.academicYear() != null) grade.setAcademicYear(req.academicYear());
+        if (req.semester() != null) grade.setSemester(req.semester());
+        if (req.marksJson() != null) grade.setMarksJson(req.marksJson());
         gradeRepository.save(grade);
         return ResponseEntity.ok(grade);
     }

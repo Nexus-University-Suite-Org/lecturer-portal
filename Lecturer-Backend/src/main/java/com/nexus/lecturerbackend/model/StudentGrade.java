@@ -49,4 +49,7 @@ public class StudentGrade {
 
     @Column(length = 20)
     private String semester;
+
+    @Column(columnDefinition = "text")
+    private String marksJson;
 }

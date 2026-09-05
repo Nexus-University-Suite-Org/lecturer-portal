@@ -28,12 +28,17 @@ public class LiveSession {
     @Column(length = 200)
     private String courseName;
 
+    private Long courseUnitId;
+
     private LocalDateTime scheduledAt;
 
     private Integer durationMinutes;
 
     @Column(length = 500)
     private String meetLink;
+
+    @Column(length = 500)
+    private String imageUrl;
 
     private Integer attendees = 0;
 
@@ -44,4 +49,7 @@ public class LiveSession {
     private String sessionType;
 
     private Long classroomId;
+
+    @Column(columnDefinition = "boolean default false")
+    private Boolean notifyStarted = false;
 }
