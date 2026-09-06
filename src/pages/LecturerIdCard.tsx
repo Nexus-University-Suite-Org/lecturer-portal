@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { getBackend, getNuBackend } from "@/lib/backendApi";
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between text-[11px] sm:text-xs text-muted-foreground border-b border-border/60 py-1 last:border-b-0">
@@ -28,33 +29,170 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
+interface CoreLecturer {
+  id?: number;
+  full_name?: string;
+  email?: string;
+  student_number?: string;
+  department?: string;
+  college?: string;
+  specialization?: string;
+  office_phone?: string;
+  phone_number?: string;
+  avatar_url?: string;
+}
+
+interface RegLecturer {
+  lecturer_number?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  department?: string;
+  specialization?: string;
+  employment_date?: string;
+  status?: string;
+  phone?: string;
+  avatar_url?: string;
+}
+
+interface LecturerCardData {
+  name: string;
+  title: string;
+  department: string;
+  staffNumber: string;
+  employment: string;
+  validThru: string;
+  campus: string;
+  phone: string;
+  avatar: string | null;
+  status: string;
+}
+
+const toMonthYear = (date: Date) =>
+  date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("") || "NU";
+
+function buildFallback(profile: any, user: any): LecturerCardData {
+  return {
+    name:
+      profile?.full_name || user?.user_metadata?.full_name || "Lecturer Name",
+    title: "Lecturer",
+    department: profile?.department || "—",
+    staffNumber: "",
+    employment: "",
+    validThru: toMonthYear(new Date(Date.now() + 365 * 24 * 3600 * 1000)),
+    campus: profile?.college || "",
+    phone: profile?.phone_number || profile?.phone || "",
+    avatar: null,
+    status: "Active",
+  };
+}
+
+function compose(
+  core: CoreLecturer | null,
+  reg: RegLecturer | null,
+  profile: any,
+  user: any,
+): LecturerCardData {
+  const fallback = buildFallback(profile, user);
+
+  const fullName =
+    [reg?.first_name, reg?.last_name].filter(Boolean).join(" ").trim() ||
+    core?.full_name ||
+    fallback.name;
+
+  const employmentDate = reg?.employment_date
+    ? new Date(reg.employment_date)
+    : null;
+
+  const validBase = employmentDate
+    ? new Date(employmentDate.getFullYear() + 1, employmentDate.getMonth(), 1)
+    : new Date(Date.now() + 365 * 24 * 3600 * 1000);
+
+  return {
+    name: fullName,
+    title: reg?.specialization || core?.specialization || fallback.title,
+    department: reg?.department || core?.department || fallback.department,
+    staffNumber: reg?.lecturer_number || core?.student_number || "",
+    employment: employmentDate ? toMonthYear(employmentDate) : "",
+    validThru: toMonthYear(validBase),
+    campus: core?.college || fallback.campus,
+    phone:
+      reg?.phone || core?.phone_number || core?.office_phone || fallback.phone,
+    avatar: reg?.avatar_url
+      ? `http://localhost:8082${reg.avatar_url}`
+      : core?.avatar_url
+        ? `http://localhost:8084${core.avatar_url}`
+        : null,
+    status: reg?.status || fallback.status,
+  };
+}
+
 export default function LecturerIdCard() {
   const { user, profile } = useAuth();
 
-  const lecturer = useMemo(
-    () => ({
-      name:
-        profile?.full_name || user?.user_metadata?.full_name || "Lecturer Name",
-      department: profile?.department || "Computer Science Department",
-      staffNumber: profile?.staff_number || "STAFF-2026-00123",
-      employeeId: profile?.employee_id || "EMP-NU-2026-456",
-      campus: profile?.college || "Main Campus",
-      phone: profile?.phone_number || profile?.phone || "+256 700 000 000",
-      validThru: "Dec 2026",
-      title: profile?.title || "Assistant Lecturer",
-    }),
-    [profile, user]
+  const [lecturer, setLecturer] = useState<LecturerCardData>(() =>
+    buildFallback(profile, user),
   );
+
+  useEffect(() => {
+    let active = true;
+    const uid = user?.uid;
+    const email = (profile?.email || user?.email || "").toLowerCase();
+
+    const run = async () => {
+      let core: CoreLecturer | null = null;
+      let reg: RegLecturer | null = null;
+
+      if (uid) {
+        try {
+          core = await getBackend<CoreLecturer>(`/api/profiles/by-user/${uid}/`);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      try {
+        const res = await getNuBackend<{ data?: RegLecturer[] }>(
+          "/api/profiles?role=lecturer",
+        );
+        const list = res?.data ?? [];
+        reg =
+          list.find(
+            (l) =>
+              l.email &&
+              l.email.toLowerCase() === (core?.email || email).toLowerCase(),
+          ) || null;
+      } catch {
+        /* ignore */
+      }
+
+      if (!active) return;
+      setLecturer(compose(core, reg, profile, user));
+    };
+
+    run();
+    return () => {
+      active = false;
+    };
+  }, [user, profile]);
 
   const handlePrint = () => window.print();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-24 md:pb-10">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-24 md:pb-10 print:bg-white print:p-0">
 
 
-      <main className="container py-8">
+      <main className="container py-8 print:p-0 print:max-w-none">
         <div className="max-w-5xl mx-auto space-y-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
             <div className="space-y-1">
               <Badge className="w-fit" variant="secondary">
                 Digital + Print Ready
@@ -73,7 +211,7 @@ export default function LecturerIdCard() {
             </Button>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 print:grid-cols-2 items-stretch">
+          <div className="grid md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-4 items-stretch">
             {/* Front Side */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -105,8 +243,8 @@ export default function LecturerIdCard() {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <div className="h-20 w-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white text-3xl font-bold">
-                      {lecturer.name.charAt(0)}
+                    <div className="h-20 w-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white text-2xl font-bold tracking-wide">
+                      {getInitials(lecturer.name)}
                     </div>
                     <div className="space-y-1">
                       <p className="text-lg font-semibold leading-tight">
@@ -117,9 +255,11 @@ export default function LecturerIdCard() {
                         <ShieldCheck className="h-4 w-4" />
                         <span>{lecturer.staffNumber}</span>
                       </div>
-                      <div className="text-xs text-white/70 font-mono">
-                        Employee: {lecturer.employeeId}
-                      </div>
+                      {lecturer.employment && (
+                        <div className="text-xs text-white/70 font-mono">
+                          Employment: {lecturer.employment}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -134,11 +274,11 @@ export default function LecturerIdCard() {
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      <span>{lecturer.campus}</span>
+                      <span>{lecturer.campus || "—"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
-                      <span className="truncate">{lecturer.phone}</span>
+                      <span className="truncate">{lecturer.phone || "—"}</span>
                     </div>
                   </div>
 
@@ -176,12 +316,19 @@ export default function LecturerIdCard() {
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <InfoRow label="Staff No." value={lecturer.staffNumber} />
-                    <InfoRow label="Employee ID" value={lecturer.employeeId} />
+                    <InfoRow
+                      label="Staff No."
+                      value={lecturer.staffNumber || "—"}
+                    />
+                    <InfoRow
+                      label="Employment"
+                      value={lecturer.employment || "—"}
+                    />
+                    <InfoRow label="Status" value={lecturer.status} />
                     <InfoRow label="Title" value={lecturer.title} />
                     <InfoRow label="Department" value={lecturer.department} />
-                    <InfoRow label="Campus" value={lecturer.campus} />
-                    <InfoRow label="Phone" value={lecturer.phone} />
+                    <InfoRow label="Campus" value={lecturer.campus || "—"} />
+                    <InfoRow label="Phone" value={lecturer.phone || "—"} />
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -219,7 +366,9 @@ export default function LecturerIdCard() {
         </div>
       </main>
 
-      <LecturerBottomNav />
+      <div className="print:hidden">
+        <LecturerBottomNav />
+      </div>
     </div>
   );
 }

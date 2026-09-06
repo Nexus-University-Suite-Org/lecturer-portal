@@ -30,3 +30,6 @@ dist-ssr
 Nexus-Application-Portal/
 registrar-hub/
 platform/
+
+# Launcher scripts
+*.bat

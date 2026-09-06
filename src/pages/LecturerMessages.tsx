@@ -4,24 +4,20 @@ import {
   Mail,
   Send,
   Trash2,
-  Archive,
-  Pin,
   Search,
-  Filter,
-  Plus,
   X,
   User,
   Inbox,
   Star,
-  Clock,
   Paperclip,
   FileText,
   Loader2,
+  Reply,
+  Sparkles,
 } from "lucide-react";
 
 import { LecturerBottomNav } from "@/components/layout/LecturerBottomNav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,13 +30,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,6 +80,29 @@ const rise = {
     y: 0,
     transition: { delay: i * 0.05 },
   }),
+};
+
+const viewTabs: { key: ViewType; label: string; icon: typeof Inbox }[] = [
+  { key: "inbox", label: "Inbox", icon: Inbox },
+  { key: "sent", label: "Sent", icon: Send },
+  { key: "starred", label: "Starred", icon: Star },
+];
+
+const avatarPalette = [
+  "bg-navy",
+  "bg-teal",
+  "bg-coral",
+  "bg-lavender",
+  "bg-emerald",
+  "bg-amber",
+];
+
+const avatarColor = (name: string) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return avatarPalette[hash % avatarPalette.length];
 };
 
 export default function LecturerMessages() {
@@ -470,250 +482,324 @@ export default function LecturerMessages() {
       .slice(0, 2);
   };
 
+  const isMessageUnread = (message: Message) =>
+    !message.is_read && message.to_user_id === uid();
+
+  const starredCount = messages.filter((m) => m.is_starred).length;
+
+  const statCards = [
+    {
+      label: "Messages",
+      value: messages.length,
+      icon: Mail,
+      tint: "bg-primary/10 text-primary",
+    },
+    {
+      label: "Unread",
+      value: unreadCount,
+      icon: Inbox,
+      tint: "bg-emerald/10 text-emerald",
+    },
+    {
+      label: "Starred",
+      value: starredCount,
+      icon: Star,
+      tint: "bg-amber/10 text-amber",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28"
+    >
       <main className="px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Header banner */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-primary-foreground shadow-lg"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Mail className="h-6 w-6 text-primary" />
+          <div className="pointer-events-none absolute -top-14 -right-10 h-52 w-52 rounded-full bg-secondary/40 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 flex-shrink-0 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shadow-inner">
+                <Mail className="h-7 w-7" />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold">Messages</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage your inbox and communications
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                  Messages
+                </h1>
+                <p className="text-sm text-primary-foreground/70 mt-0.5">
+                  Manage your inbox & student communications
                 </p>
               </div>
             </div>
             <Button
               onClick={() => setIsComposeOpen(true)}
-              className="bg-gradient-to-r from-primary to-secondary gap-2 w-full sm:w-auto"
+              className="h-12 gap-2 rounded-xl bg-white text-primary font-semibold shadow-lg hover:bg-white/90 w-full sm:w-auto"
             >
               <Send className="h-4 w-4" /> New Message
             </Button>
           </div>
-
-          {/* Quick Stats */}
-          <div className="flex flex-wrap gap-2 md:gap-4">
-            <Badge variant="outline" className="px-3 py-1.5">
-              <Mail className="h-3 w-3 mr-1" />
-              {messages.length} Messages
-            </Badge>
-            <Badge variant="outline" className="px-3 py-1.5">
-              {unreadCount} Unread
-            </Badge>
-          </div>
         </motion.div>
 
-        {/* Controls */}
+        {/* Quick stats */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          {statCards.map((card, idx) => (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 + idx * 0.06 }}
+            >
+              <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl p-3 sm:p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`h-10 w-10 flex-shrink-0 rounded-xl flex items-center justify-center ${card.tint}`}
+                  >
+                    <card.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground leading-none">
+                      {card.value}
+                    </p>
+                    <p className="text-[11px] sm:text-sm text-muted-foreground mt-1 truncate">
+                      {card.label}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Toolbar */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-4"
+          transition={{ delay: 0.15 }}
+          className="flex flex-col lg:flex-row lg:items-center gap-3"
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1 min-w-0">
-              <label className="text-sm font-medium block mb-2">
-                Search Messages
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by sender, subject..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12"
-                />
-              </div>
-            </div>
+          <div className="inline-flex items-center gap-1 rounded-2xl bg-muted/70 backdrop-blur p-1 shadow-inner w-fit">
+            {viewTabs.map((tab) => {
+              const active = selectedView === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setSelectedView(tab.key)}
+                  className={`flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2.5 text-sm font-medium transition-all ${
+                    active
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  {tab.key === "inbox" && unreadCount > 0 && (
+                    <span
+                      className={`h-5 min-w-5 rounded-full px-1.5 text-[11px] font-bold flex items-center justify-center ${
+                        active
+                          ? "bg-emerald text-white"
+                          : "bg-emerald/20 text-emerald"
+                      }`}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          {/* View Tabs */}
-          <div className="flex gap-2 flex-wrap">
-            <Select
-              value={selectedView}
-              onValueChange={(value) => setSelectedView(value as ViewType)}
-            >
-              <SelectTrigger className="w-[180px] h-10">
-                <SelectValue placeholder="Select view" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inbox">
-                  <span className="flex items-center gap-2">
-                    <Inbox className="h-4 w-4" />
-                    Inbox
-                  </span>
-                </SelectItem>
-                <SelectItem value="sent">
-                  <span className="flex items-center gap-2">
-                    <Send className="h-4 w-4" />
-                    Sent
-                  </span>
-                </SelectItem>
-                <SelectItem value="starred">
-                  <span className="flex items-center gap-2">
-                    <Star className="h-4 w-4" />
-                    Starred
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by sender, subject, or content..."
+              aria-label="Search messages"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-12 pl-10 rounded-xl border-border/70 bg-card/70 backdrop-blur-xl shadow-sm"
+            />
           </div>
         </motion.div>
 
-        {/* Messages List */}
-        <div className="space-y-2">
-          {loading ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12"
-            >
-              <Clock className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3 animate-spin" />
-              <p className="text-muted-foreground">Loading messages...</p>
-            </motion.div>
-          ) : filteredMessages.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12"
-            >
-              <Mail className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No messages found</p>
-            </motion.div>
-          ) : (
-            filteredMessages.map((message, i) => {
-              const displayProfile =
-                selectedView === "sent"
-                  ? message.to_profile
-                  : message.from_profile;
-              return (
-                <motion.div
-                  key={message.id}
-                  variants={rise}
-                  initial="hidden"
-                  animate="visible"
-                  custom={i}
+        {/* Messages list */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+        >
+          <Card className="overflow-hidden rounded-2xl border-border/60 bg-card/70 backdrop-blur-xl shadow-sm divide-y divide-border/50">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 px-4 sm:px-5 py-4 animate-pulse"
                 >
-                  <Card
-                    className={`border-border/60 cursor-pointer transition-all hover:shadow-md ${
-                      !message.is_read && message.to_user_id === uid()
-                        ? "bg-primary/5 border-primary/30"
-                        : "bg-card/70 backdrop-blur-lg"
-                    } ${
-                      selectedMessage?.id === message.id
-                        ? "ring-2 ring-primary"
-                        : ""
-                    }`}
-                    onClick={() => handleMessageClick(message)}
+                  <div className="h-11 w-11 flex-shrink-0 rounded-full bg-muted/70" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-40 rounded bg-muted/70" />
+                    <div className="h-3 w-64 rounded bg-muted/50" />
+                  </div>
+                </div>
+              ))
+            ) : filteredMessages.length === 0 ? (
+              <div className="px-6 py-20 text-center">
+                <div className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
+                  <Sparkles className="h-9 w-9 text-muted-foreground/50" />
+                </div>
+                <p className="text-lg font-semibold text-foreground">
+                  No messages here
+                </p>
+                <p className="text-sm text-muted-foreground mt-1 mb-6">
+                  Try a different folder or start a new conversation.
+                </p>
+                <Button
+                  onClick={() => setIsComposeOpen(true)}
+                  className="bg-gradient-to-r from-primary to-secondary gap-2 rounded-xl"
+                >
+                  <Send className="h-4 w-4" /> New Message
+                </Button>
+              </div>
+            ) : (
+              filteredMessages.map((message, i) => {
+                const displayProfile =
+                  selectedView === "sent"
+                    ? message.to_profile
+                    : message.from_profile;
+                const unread = isMessageUnread(message);
+                return (
+                  <motion.div
+                    key={message.id}
+                    variants={rise}
+                    initial="hidden"
+                    animate="visible"
+                    custom={i}
                   >
-                    <CardContent className="pt-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <Avatar className="h-10 w-10 flex-shrink-0">
-                            <AvatarImage src={displayProfile?.avatar_url} />
-                            <AvatarFallback>
-                              {displayProfile?.full_name
-                                ? getInitials(displayProfile.full_name)
-                                : "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p
-                                className={`font-semibold truncate text-sm md:text-base ${
-                                  !message.is_read &&
-                                  message.to_user_id === uid()
-                                    ? "font-bold text-foreground"
-                                    : "text-foreground"
-                                }`}
-                              >
-                                {displayProfile?.full_name || "Unknown User"}
-                              </p>
-                              {!message.is_read &&
-                                message.to_user_id === uid() && (
-                                  <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
-                                )}
-                            </div>
-                            <p className="text-sm text-foreground font-medium truncate">
-                              {message.subject}
-                            </p>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                              {message.body}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-2">
+                    <div
+                      onClick={() => handleMessageClick(message)}
+                      className={`group relative flex cursor-pointer items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 transition-colors ${
+                        unread
+                          ? "bg-primary/[0.04] hover:bg-primary/[0.08]"
+                          : "hover:bg-muted/40"
+                      } ${selectedMessage?.id === message.id ? "bg-primary/[0.06]" : ""}`}
+                    >
+                      {unread && (
+                        <span className="absolute left-0 inset-y-0 w-[3px] rounded-r-full bg-gradient-to-b from-emerald to-teal" />
+                      )}
+
+                      <Avatar className="h-11 w-11 flex-shrink-0 mt-0.5">
+                        <AvatarImage
+                          src={displayProfile?.avatar_url || undefined}
+                        />
+                        <AvatarFallback
+                          className={`${avatarColor(
+                            displayProfile?.full_name || "",
+                          )} font-semibold text-primary-foreground`}
+                        >
+                          {displayProfile?.full_name
+                            ? getInitials(displayProfile.full_name)
+                            : "?"}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p
+                            className={`truncate text-sm ${
+                              unread
+                                ? "font-bold text-foreground"
+                                : "font-semibold text-foreground/90"
+                            }`}
+                          >
+                            {displayProfile?.full_name || "Unknown User"}
+                          </p>
+                          <div className="flex flex-shrink-0 items-center gap-2">
+                            {message.attachment_url && (
+                              <Paperclip className="h-3.5 w-3.5 text-muted-foreground/60" />
+                            )}
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                               {formatDistanceToNow(
                                 new Date(message.created_at),
-                                {
-                                  addSuffix: true,
-                                },
+                                { addSuffix: true },
                               )}
-                            </p>
+                            </span>
                           </div>
                         </div>
-                        <div className="flex flex-col gap-1 flex-shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleStar(message.id, message.is_starred);
-                            }}
-                            className="p-2 hover:bg-primary/10 rounded-lg transition-colors touch-manipulation"
-                            title={message.is_starred ? "Unstar" : "Star"}
-                          >
-                            <Star
-                              className={`h-4 w-4 ${
-                                message.is_starred
-                                  ? "fill-primary text-primary"
-                                  : "text-muted-foreground"
-                              }`}
-                            />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(message.id);
-                            }}
-                            className="p-2 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors text-muted-foreground touch-manipulation"
-                            title="Delete message"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        <p
+                          className={`truncate text-sm mt-0.5 ${
+                            unread
+                              ? "font-semibold text-foreground"
+                              : "text-foreground/85"
+                          }`}
+                        >
+                          {message.subject}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground mt-0.5">
+                          {message.body}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })
-          )}
-        </div>
+
+                      <div className="flex flex-col items-center flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStar(message.id, message.is_starred);
+                          }}
+                          className="p-2 rounded-lg hover:bg-muted transition-colors touch-manipulation"
+                          title={message.is_starred ? "Unstar" : "Star"}
+                        >
+                          <Star
+                            className={
+                              message.is_starred
+                                ? "h-4 w-4 fill-amber text-amber"
+                                : "h-4 w-4 text-muted-foreground"
+                            }
+                          />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(message.id);
+                          }}
+                          className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors touch-manipulation"
+                          title="Delete message"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </Card>
+        </motion.div>
       </main>
 
       {/* Compose Dialog */}
       <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
-        <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto mx-2 md:mx-auto p-4 md:p-6">
-          <DialogHeader className="pb-4">
-            <DialogTitle className="text-xl md:text-2xl font-semibold">
-              New Message to Student
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Send a message to your students
-            </p>
-          </DialogHeader>
-          <div className="space-y-6">
+        <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto mx-2 md:mx-auto p-0 gap-0 rounded-2xl">
+          <div className="bg-gradient-to-br from-primary via-primary to-primary/80 px-6 sm:px-8 py-6 text-primary-foreground">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-primary-foreground text-xl md:text-2xl font-semibold">
+                New Message to Student
+              </DialogTitle>
+              <p className="text-sm text-primary-foreground/70 mt-1">
+                Send a message to one of your students
+              </p>
+            </DialogHeader>
+          </div>
+          <div className="px-6 sm:px-8 py-6 space-y-6">
             <div>
               <label className="text-sm font-medium mb-3 block text-foreground">
                 To
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                 <select
                   value={composeToId || ""}
                   onChange={(e) => {
@@ -723,7 +809,7 @@ export default function LecturerMessages() {
                     setComposeToId(e.target.value);
                     setComposeTo(selectedStudent?.email || "");
                   }}
-                  className="w-full pl-10 pr-4 py-3 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary h-12 text-base"
+                  className="w-full pl-10 pr-4 py-3 border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary h-12 text-base"
                 >
                   <option value="">Select a student...</option>
                   {students.map((student) => (
@@ -742,7 +828,7 @@ export default function LecturerMessages() {
                 value={composeSubject}
                 onChange={(e) => setComposeSubject(e.target.value)}
                 placeholder="Enter message subject..."
-                className="h-12 text-base"
+                className="h-12 text-base rounded-xl"
               />
             </div>
             <div>
@@ -754,7 +840,7 @@ export default function LecturerMessages() {
                 onChange={(e) => setComposeBody(e.target.value)}
                 placeholder="Type your message here..."
                 rows={8}
-                className="min-h-[200px] md:min-h-[300px] resize-none text-base leading-relaxed"
+                className="min-h-[200px] md:min-h-[300px] resize-none text-base leading-relaxed rounded-xl bg-background"
               />
             </div>
 
@@ -790,7 +876,7 @@ export default function LecturerMessages() {
                         ?.click()
                     }
                     disabled={uploadingAttachment}
-                    className="flex items-center gap-2 h-12 px-4 text-base"
+                    className="flex items-center gap-2 h-12 px-4 text-base rounded-xl"
                   >
                     <Paperclip className="h-4 w-4" />
                     {attachmentFile ? "Change File" : "Attach File"}
@@ -823,7 +909,7 @@ export default function LecturerMessages() {
               </div>
             </div>
           </div>
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-3 pt-6 border-t">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-3 px-6 sm:px-8 py-4 border-t bg-muted/40">
             <Button
               variant="outline"
               onClick={() => {
@@ -831,7 +917,7 @@ export default function LecturerMessages() {
                 setComposeTo("");
               }}
               disabled={sending}
-              className="w-full sm:w-auto h-12 text-base order-2 sm:order-1"
+              className="w-full sm:w-auto h-12 text-base order-2 sm:order-1 rounded-xl"
             >
               Cancel
             </Button>
@@ -843,7 +929,7 @@ export default function LecturerMessages() {
                 !composeSubject.trim() ||
                 !composeBody.trim()
               }
-              className="w-full sm:w-auto h-12 bg-gradient-to-r from-primary to-secondary text-base order-1 sm:order-2"
+              className="w-full sm:w-auto h-12 bg-gradient-to-r from-primary to-secondary text-base order-1 sm:order-2 rounded-xl"
             >
               {sending ? (
                 <>
@@ -870,115 +956,132 @@ export default function LecturerMessages() {
               if (!open) setSelectedMessage(null);
             }}
           >
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto mx-4 md:mx-auto">
-              <DialogHeader>
-                <DialogTitle className="text-lg md:text-xl pr-8">
-                  {selectedMessage.subject}
-                </DialogTitle>
-              </DialogHeader>
-              <ScrollArea className="max-h-[60vh] md:max-h-[400px] pr-4">
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 pb-4 border-b">
-                    <Avatar className="h-12 w-12 flex-shrink-0">
-                      <AvatarImage
-                        src={
-                          selectedView === "sent"
-                            ? selectedMessage.to_profile?.avatar_url
-                            : selectedMessage.from_profile?.avatar_url
-                        }
-                      />
-                      <AvatarFallback>
-                        {selectedView === "sent"
-                          ? selectedMessage.to_profile?.full_name
-                            ? getInitials(selectedMessage.to_profile.full_name)
-                            : "?"
-                          : selectedMessage.from_profile?.full_name
-                            ? getInitials(
-                                selectedMessage.from_profile.full_name,
-                              )
-                            : "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm md:text-base">
-                        {selectedView === "sent"
-                          ? selectedMessage.to_profile?.full_name
-                          : selectedMessage.from_profile?.full_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {selectedView === "sent"
-                          ? selectedMessage.to_profile?.email
-                          : selectedMessage.from_profile?.email}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground flex-shrink-0">
-                      {formatDistanceToNow(
-                        new Date(selectedMessage.created_at),
-                        { addSuffix: true },
-                      )}
-                    </p>
-                  </div>
-                  <div className="prose max-w-none whitespace-pre-wrap text-sm md:text-base leading-relaxed">
-                    {selectedMessage.body}
-                  </div>
-
-                  {/* Attachment */}
-                  {selectedMessage.attachment_url && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm font-medium mb-2">Attachment:</p>
-                      {/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(
-                        selectedMessage.attachment_name || "",
-                      ) ? (
-                        <a
-                          href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8084"}${selectedMessage.attachment_url}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block"
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto mx-4 md:mx-auto p-0 gap-0 rounded-2xl">
+              <div className="bg-gradient-to-br from-primary via-primary to-primary/80 px-6 sm:px-8 py-6 text-primary-foreground">
+                <DialogHeader className="text-left">
+                  <DialogTitle className="text-primary-foreground text-xl md:text-2xl pr-10 leading-snug font-semibold">
+                    {selectedMessage.subject}
+                  </DialogTitle>
+                </DialogHeader>
+              </div>
+              <div className="px-6 sm:px-8 py-6">
+                <ScrollArea className="max-h-[60vh] md:max-h-[400px] pr-4">
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 pb-4 border-b border-border/70">
+                      <Avatar className="h-12 w-12 flex-shrink-0">
+                        <AvatarImage
+                          src={
+                            selectedView === "sent"
+                              ? selectedMessage.to_profile?.avatar_url ||
+                                undefined
+                              : selectedMessage.from_profile?.avatar_url ||
+                                undefined
+                          }
+                        />
+                        <AvatarFallback
+                          className={`${avatarColor(
+                            (selectedView === "sent"
+                              ? selectedMessage.to_profile?.full_name
+                              : selectedMessage.from_profile?.full_name) || "",
+                          )} font-semibold text-primary-foreground text-sm`}
                         >
-                          <img
-                            src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8084"}${selectedMessage.attachment_url}`}
-                            alt={selectedMessage.attachment_name || "Attachment"}
-                            className="max-w-full max-h-80 rounded-lg border object-contain"
-                          />
-                        </a>
-                      ) : null}
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          downloadAttachment(
-                            selectedMessage.attachment_url!,
-                            selectedMessage.attachment_name || "attachment",
-                          )
-                        }
-                        className="gap-2 w-full sm:w-auto justify-start h-12 mt-2"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                        {selectedMessage.attachment_name}{" "}
-                        {selectedMessage.attachment_size &&
-                          `(${(selectedMessage.attachment_size / 1024).toFixed(
-                            1,
-                          )} KB)`}
-                      </Button>
+                          {selectedView === "sent"
+                            ? selectedMessage.to_profile?.full_name
+                              ? getInitials(
+                                  selectedMessage.to_profile.full_name,
+                                )
+                              : "?"
+                            : selectedMessage.from_profile?.full_name
+                              ? getInitials(
+                                  selectedMessage.from_profile.full_name,
+                                )
+                              : "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm md:text-base">
+                          {selectedView === "sent"
+                            ? selectedMessage.to_profile?.full_name
+                            : selectedMessage.from_profile?.full_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {selectedView === "sent"
+                            ? selectedMessage.to_profile?.email
+                            : selectedMessage.from_profile?.email}
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground flex-shrink-0">
+                        <Mail className="h-3 w-3" />
+                        {formatDistanceToNow(
+                          new Date(selectedMessage.created_at),
+                          { addSuffix: true },
+                        )}
+                      </span>
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
-              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                    <div className="prose max-w-none whitespace-pre-wrap text-sm md:text-base leading-relaxed">
+                      {selectedMessage.body}
+                    </div>
+
+                    {/* Attachment */}
+                    {selectedMessage.attachment_url && (
+                      <div className="mt-4 pt-4 border-t border-border/70">
+                        <p className="text-sm font-medium mb-2">
+                          Attachment:
+                        </p>
+                        {/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(
+                          selectedMessage.attachment_name || "",
+                        ) ? (
+                          <a
+                            href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8084"}${selectedMessage.attachment_url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <img
+                              src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8084"}${selectedMessage.attachment_url}`}
+                              alt={selectedMessage.attachment_name || "Attachment"}
+                              className="max-w-full max-h-80 rounded-lg border object-contain"
+                            />
+                          </a>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            downloadAttachment(
+                              selectedMessage.attachment_url!,
+                              selectedMessage.attachment_name || "attachment",
+                            )
+                          }
+                          className="gap-2 w-full sm:w-auto justify-start h-12 mt-2 rounded-xl"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          {selectedMessage.attachment_name}{" "}
+                          {selectedMessage.attachment_size &&
+                            `(${(selectedMessage.attachment_size / 1024).toFixed(
+                              1,
+                            )} KB)`}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 px-6 sm:px-8 py-4 border-t bg-muted/40">
                 {selectedView === "inbox" && (
                   <Button
                     onClick={() => {
                       handleReply(selectedMessage);
                       setSelectedMessage(null);
                     }}
-                    className="gap-2 w-full sm:w-auto h-12 bg-gradient-to-r from-primary to-secondary"
+                    className="gap-2 w-full sm:w-auto h-12 bg-gradient-to-r from-primary to-secondary rounded-xl"
                   >
-                    <Send className="h-4 w-4" /> Reply
+                    <Reply className="h-4 w-4" /> Reply
                   </Button>
                 )}
                 <Button
                   variant="outline"
                   onClick={() => setSelectedMessage(null)}
-                  className="w-full sm:w-auto h-12"
+                  className="w-full sm:w-auto h-12 rounded-xl"
                 >
                   Close
                 </Button>
@@ -989,6 +1092,6 @@ export default function LecturerMessages() {
       </AnimatePresence>
 
       <LecturerBottomNav />
-    </div>
+    </motion.div>
   );
 }

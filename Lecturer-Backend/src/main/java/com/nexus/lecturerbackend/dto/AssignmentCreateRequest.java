@@ -11,5 +11,7 @@ public record AssignmentCreateRequest(
         String description,
         LocalDateTime dueDate,
         Double totalPoints,
-        String status) {
+        String status,
+        String instructionDocumentUrl,
+        String instructionDocumentName) {
 }

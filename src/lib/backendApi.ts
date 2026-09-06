@@ -53,6 +53,22 @@ export async function postBackend<T>(
   return handleResponse(response) as Promise<T>;
 }
 
+export async function putBackend<T>(
+  path: string,
+  payload: unknown,
+  auth: boolean = false,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth ? authHeaders() : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response) as Promise<T>;
+}
+
 export async function deleteBackend<T>(path: string, auth: boolean = false): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "DELETE",
@@ -62,6 +78,16 @@ export async function deleteBackend<T>(path: string, auth: boolean = false): Pro
     },
   });
   return handleResponse(response) as Promise<T>;
+}
+
+export async function uploadAttachment(file: File): Promise<{ id: number; url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${API_BASE_URL}/api/attachments/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  return handleResponse(response) as Promise<{ id: number; url: string }>;
 }
 
 // NU-Backend (port 8082) helpers for payments, OTP, etc.

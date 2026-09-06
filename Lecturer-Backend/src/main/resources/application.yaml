@@ -36,9 +36,19 @@ lecturer:
     secret: ${JWT_SECRET:lecturer-portal-secret-key-change-in-production-2026-ultra-secure-long-enough}
     expiration-hours: ${JWT_EXPIRATION_HOURS:24}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5175,http://127.0.0.1:5175,http://localhost:5174,http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5176,http://127.0.0.1:5176,http://localhost:5175,http://localhost:5174,http://localhost:5173}
+
+nad:
+  base-url: ${NAD_BACKEND_URL:http://localhost:8083}
+  admin-email: ${NAD_ADMIN_EMAIL:admin@nexus.edu}
+  admin-password: ${NAD_ADMIN_PASSWORD:admin123}
 
 logging:
   level:
     org.hibernate.SQL: WARN
     org.springframework.web.multipart: DEBUG
+
+set-password:
+  # Must match REG-Backend's JWT_SECRET (registrar-hub/.env) so registrar-issued
+  # set-password tokens verify correctly here.
+  secret: ${SET_PASSWORD_SECRET:reg-backend-dev-secret-key-change-in-production}

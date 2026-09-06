@@ -180,7 +180,7 @@ export default function CreateQuiz() {
 
       const courseUnitsData = await getBackend<any[]>("/api/course-units/");
       const coursesData: CourseOption[] = (courseUnitsData || []).map((course: any) => ({
-        id: course.id,
+        id: String(course.id),
         code: course.code || course.course_unit_code || "Unknown",
         title: course.name || course.course_unit_name || "Unknown Course",
       }));
@@ -471,18 +471,11 @@ export default function CreateQuiz() {
         auto_deactivate: formData.autoDeactivate,
         lecturer_id: user.uid,
         questions: extractedQuestions.map((question) => {
-          let correctAnswerValue: string | number = question.correct_answer;
-          if (
-            typeof correctAnswerValue === "string" &&
-            /^\d+$/.test(correctAnswerValue)
-          ) {
-            correctAnswerValue = parseInt(correctAnswerValue, 10);
-          }
           return {
             question: question.question,
             type: question.type,
             options: question.options || [],
-            correct_answer: correctAnswerValue,
+            correct_answer: String(question.correct_answer),
             explanation: question.explanation || "",
             points: 1,
             difficulty: question.difficulty,
@@ -522,8 +515,6 @@ export default function CreateQuiz() {
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-gradient-to-br from-primary/20 to-secondary/10 blur-3xl rounded-full opacity-60" />
         <div className="absolute top-1/3 -right-40 w-96 h-96 bg-gradient-to-bl from-secondary/15 via-primary/10 to-transparent blur-3xl rounded-full opacity-40" />
       </div>
-
-      <LecturerHeader />
 
       <main className="px-4 pb-28 sm:px-6 lg:px-8 relative">
         <div className="max-w-4xl mx-auto pt-6 lg:pt-10">

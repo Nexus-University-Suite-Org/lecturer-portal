@@ -9,5 +9,7 @@ public record AssignmentUpdateRequest(
         String title,
         String description,
         LocalDateTime dueDate,
-        Double totalPoints) {
+        Double totalPoints,
+        String instructionDocumentUrl,
+        String instructionDocumentName) {
 }

@@ -219,7 +219,6 @@ export default function MarksManagement() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
-        <LecturerHeader />
         <div className="flex items-center justify-center h-screen">
           <p>Loading...</p>
         </div>
@@ -229,7 +228,6 @@ export default function MarksManagement() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28">
-      <LecturerHeader />
       <main className="px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -8,7 +8,9 @@ import {
   MapPin,
   Search,
   Download,
-  Filter,
+  Calendar,
+  BadgeCheck,
+  GraduationCap,
   MessageCircle,
 } from "lucide-react";
 
@@ -46,6 +48,19 @@ const rise = {
     transition: { delay: i * 0.05 },
   }),
 };
+
+const buildGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const todayLabel = new Date().toLocaleDateString(undefined, {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
 
 export default function LecturerRoster() {
   const { user } = useAuth();
@@ -115,113 +130,132 @@ export default function LecturerRoster() {
     total: students.length,
     active: students.filter((s) => s.status === "active").length,
     inactive: students.filter((s) => s.status === "inactive").length,
-    avgGPA: (
-      students.reduce((acc, s) => acc + s.gpa, 0) / students.length
-    ).toFixed(2),
+    avgGPA: students.length
+      ? (
+          students.reduce((acc, s) => acc + s.gpa, 0) / students.length
+        ).toFixed(2)
+      : "0.00",
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-emerald-500/20 text-emerald-700 border-emerald-300/30";
+        return "bg-emerald/15 text-emerald border-emerald/40";
       case "inactive":
-        return "bg-amber-500/20 text-amber-700 border-amber-300/30";
+        return "bg-amber/15 text-amber-dark border-amber/40";
       case "graduated":
-        return "bg-blue-500/20 text-blue-700 border-blue-300/30";
+        return "bg-blue-500/15 text-blue-600 border-blue-500/30";
       default:
-        return "bg-muted/60";
+        return "bg-muted/60 text-muted-foreground border-border/60";
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28">
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -top-24 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute top-40 -right-20 h-72 w-72 rounded-full bg-teal/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-lavender/10 blur-3xl" />
+      </div>
       <main className="px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
+          className="space-y-6"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Class Roster</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage and view all enrolled students
-                </p>
+          <div className="relative overflow-hidden rounded-3xl hero-gradient p-6 sm:p-8">
+            <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-teal/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="relative">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                <Users className="h-3.5 w-3.5" />
+                Class Roster
+              </span>
+              <h1 className="mt-4 text-3xl font-display font-bold text-white sm:text-4xl">
+                {buildGreeting()}, {user?.email?.split("@")[0] || "Lecturer"}
+              </h1>
+              <p className="mt-1.5 text-sm font-medium text-white/80">
+                Manage and view all enrolled students
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {todayLabel}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  {stats.total} students
+                </span>
+                <button
+                  onClick={() => {}}
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-1.5 font-semibold text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors hover:bg-white/25"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </button>
               </div>
             </div>
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" /> Export
-            </Button>
           </div>
 
           {/* Stats */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-            >
-              <Card className="bg-primary/10 border-primary/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Total Students
-                  </p>
-                  <p className="text-2xl font-bold text-primary">
-                    {stats.total}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card className="bg-emerald-500/10 border-emerald-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold text-emerald-700">
-                    {stats.active}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <Card className="bg-amber-500/10 border-amber-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">Inactive</p>
-                  <p className="text-2xl font-bold text-amber-700">
-                    {stats.inactive}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="bg-blue-500/10 border-blue-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">Class GPA Avg</p>
-                  <p className="text-2xl font-bold text-blue-700">
-                    {stats.avgGPA}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {[
+              {
+                label: "Total Students",
+                value: stats.total,
+                accent: "from-primary to-secondary",
+                iconBg: "bg-primary/10 text-primary",
+                Icon: Users,
+              },
+              {
+                label: "Active",
+                value: stats.active,
+                accent: "from-teal to-emerald",
+                iconBg: "bg-emerald/15 text-emerald",
+                Icon: BadgeCheck,
+              },
+              {
+                label: "Inactive",
+                value: stats.inactive,
+                accent: "from-amber to-amber-dark",
+                iconBg: "bg-amber/15 text-amber-dark",
+                Icon: Users,
+              },
+              {
+                label: "Class GPA Avg",
+                value: stats.avgGPA,
+                accent: "from-blue-500 to-blue-600",
+                iconBg: "bg-blue-500/15 text-blue-600",
+                Icon: GraduationCap,
+              },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 + i * 0.05 }}
+              >
+                <Card className="overflow-hidden border-border/60 bg-card/70 backdrop-blur-lg">
+                  <div className={`h-1 bg-gradient-to-r ${s.accent}`} />
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {s.label}
+                        </p>
+                        <p className="mt-1 text-3xl font-bold text-foreground">
+                          {s.value}
+                        </p>
+                      </div>
+                      <div className={`rounded-xl p-2.5 ${s.iconBg}`}>
+                        <s.Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
 
@@ -230,29 +264,23 @@ export default function LecturerRoster() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.25 }}
-          className="space-y-4"
+          className="rounded-2xl border border-border/60 bg-card/70 p-4 backdrop-blur-lg"
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium block mb-2">
-                Search Student
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Name, email, or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
-
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <select
                 value={selectedTrack}
                 onChange={(e) => setSelectedTrack(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-border/60 bg-muted/50 text-foreground focus:outline-none"
+                className="rounded-lg border border-border/60 bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="all">All Tracks</option>
                 <option value="Advanced">Advanced</option>
@@ -262,7 +290,7 @@ export default function LecturerRoster() {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-border/60 bg-muted/50 text-foreground focus:outline-none"
+                className="rounded-lg border border-border/60 bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -274,23 +302,27 @@ export default function LecturerRoster() {
 
         {/* Student Cards Grid */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading students...</p>
+          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl py-16 text-muted-foreground">
+            <div className="rounded-2xl bg-primary/10 p-4">
+              <Users className="h-8 w-8 animate-pulse text-primary" />
             </div>
+            <p className="text-sm font-medium">Loading students...</p>
           </div>
         ) : filteredStudents.length === 0 ? (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              No Students Found
-            </h3>
-            <p className="text-muted-foreground">
-              {students.length === 0
-                ? "No students are enrolled in your courses yet."
-                : "No students match your current filters."}
-            </p>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/60 bg-card/50 py-16 text-center">
+            <div className="rounded-2xl bg-primary/10 p-4">
+              <Users className="h-8 w-8 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-foreground">
+                No Students Found
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {students.length === 0
+                  ? "No students are enrolled in your courses yet."
+                  : "No students match your current filters."}
+              </p>
+            </div>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -302,37 +334,56 @@ export default function LecturerRoster() {
                 animate="visible"
                 custom={i}
               >
-                <Card className="border-border/60 bg-card/70 backdrop-blur-lg hover:shadow-lg transition-shadow h-full">
-                  <CardContent className="pt-6">
+                <Card className="h-full overflow-hidden border-border/60 bg-card/70 backdrop-blur-lg transition-shadow hover:shadow-lg">
+                  <div className="h-1 bg-gradient-to-r from-primary via-teal to-lavender" />
+                  <CardContent className="pt-5">
                     <div className="space-y-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground">
-                          {student.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {student.studentId}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${
+                            i % 3 === 0
+                              ? "bg-gradient-to-br from-primary to-secondary"
+                              : i % 3 === 1
+                                ? "bg-gradient-to-br from-teal to-emerald"
+                                : "bg-gradient-to-br from-lavender to-blue-500"
+                          }`}
+                        >
+                          {student.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase() || "U"}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-lg font-semibold text-foreground">
+                            {student.name}
+                          </h3>
+                          <p className="truncate text-sm text-muted-foreground">
+                            {student.studentId}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <Mail className="h-4 w-4 shrink-0 text-teal" />
                           <a
                             href={`mailto:${student.email}`}
-                            className="text-primary hover:underline"
+                            className="truncate text-primary hover:underline"
                           >
                             {student.email}
                           </a>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <Phone className="h-4 w-4 shrink-0 text-lavender" />
                           <span className="text-muted-foreground">
                             {student.phone}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex flex-wrap gap-2">
                         <Badge
                           variant="outline"
                           className={getStatusColor(student.status)}
@@ -343,7 +394,7 @@ export default function LecturerRoster() {
                         <Badge variant="outline">GPA: {student.gpa}</Badge>
                       </div>
 
-                      <div className="flex gap-2 pt-3 border-t border-border/60">
+                      <div className="flex gap-2 border-t border-border/60 pt-3">
                         <Button
                           size="sm"
                           variant="outline"
@@ -355,9 +406,10 @@ export default function LecturerRoster() {
                         </Button>
                         <Button
                           size="sm"
-                          className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                          className="flex-1 gap-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
                           onClick={() => handleViewProfile(student)}
                         >
+                          <Users className="h-4 w-4" />
                           View Profile
                         </Button>
                       </div>
@@ -438,8 +490,8 @@ export default function LecturerRoster() {
                       <Badge
                         className={`text-xs ${
                           selectedStudent.status === "active"
-                            ? "bg-emerald-500/20 text-emerald-700 border-emerald-300/30"
-                            : "bg-amber-500/20 text-amber-700 border-amber-300/30"
+                            ? "bg-emerald/15 text-emerald border-emerald/40"
+                            : "bg-amber/15 text-amber-dark border-amber/40"
                         }`}
                       >
                         {selectedStudent.status}
@@ -449,7 +501,7 @@ export default function LecturerRoster() {
 
                   {selectedStudent.gpa > 0 && (
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <GraduationCap className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">GPA</p>
                         <p className="text-sm text-foreground">
@@ -460,7 +512,7 @@ export default function LecturerRoster() {
                   )}
 
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Enrolled</p>
                       <p className="text-sm text-foreground">
@@ -482,7 +534,7 @@ export default function LecturerRoster() {
                     Message
                   </Button>
                   <Button
-                    className="flex-1"
+                    className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
                     onClick={() => setShowProfileModal(false)}
                   >
                     Close

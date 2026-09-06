@@ -32,6 +32,15 @@ public class QuizAttempt {
 
     private Double score;
 
+    private Double percentage;
+
+    private Integer timeTaken;
+
+    private Boolean passed;
+
+    @Column(length = 20)
+    private String status = "submitted";
+
     private LocalDateTime startedAt;
 
     private LocalDateTime completedAt;

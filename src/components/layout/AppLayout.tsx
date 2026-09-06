@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Target,
   User,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,6 +34,7 @@ interface AppLayoutProps {
 const lecturerNavItems = [
   { label: "Dashboard", href: "/lecturer", icon: BookOpen },
   { label: "My Courses", href: "/lecturer/courses", icon: BookOpen },
+  { label: "My Classes", href: "/lecturer/classes", icon: Video },
   { label: "Grades", href: "/lecturer/gradebook", icon: BarChart3 },
   { label: "Assignments", href: "/lecturer/assignments", icon: FileText },
   { label: "Quizzes", href: "/lecturer/quiz", icon: HelpCircle },

@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findByAssignmentIdIn(Collection<Long> assignmentIds);
     List<Submission> findByAssignmentId(Long assignmentId);
+    List<Submission> findByStudentId(Long studentId);
+    void deleteByStudentId(Long studentId);
 }

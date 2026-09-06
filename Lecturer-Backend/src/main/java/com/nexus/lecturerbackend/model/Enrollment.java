@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,4 +26,12 @@ public class Enrollment {
 
     @Column(length = 50)
     private String status = "pending";
+
+    @Column(length = 50)
+    private String paperType = "normal";
+
+    @Column(nullable = false)
+    private LocalDateTime enrolledAt = LocalDateTime.now();
+
+    private Long lecturerId;
 }

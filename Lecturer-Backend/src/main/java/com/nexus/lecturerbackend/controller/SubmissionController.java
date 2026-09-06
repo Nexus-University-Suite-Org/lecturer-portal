@@ -1,8 +1,10 @@
 package com.nexus.lecturerbackend.controller;
 
+import com.nexus.lecturerbackend.dto.SubmissionCreateRequest;
 import com.nexus.lecturerbackend.dto.SubmissionUpdateRequest;
 import com.nexus.lecturerbackend.model.Submission;
 import com.nexus.lecturerbackend.repository.SubmissionRepository;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +27,9 @@ public class SubmissionController {
     }
 
     @GetMapping
-    public ResponseEntity<?> list(@RequestParam(required = false) String assignment_ids) {
+    public ResponseEntity<?> list(
+            @RequestParam(required = false) String assignment_ids,
+            @RequestParam(required = false) Long student_id) {
         if (assignment_ids != null && !assignment_ids.isBlank()) {
             List<Long> ids = new ArrayList<>();
             for (String part : assignment_ids.split(",")) {
@@ -36,12 +40,36 @@ public class SubmissionController {
             }
             return ResponseEntity.ok(submissionRepository.findByAssignmentIdIn(ids));
         }
+        if (student_id != null) {
+            return ResponseEntity.ok(submissionRepository.findByStudentId(student_id));
+        }
         return ResponseEntity.ok(submissionRepository.findAll());
     }
 
     @GetMapping("/")
-    public ResponseEntity<?> listSlash(@RequestParam(required = false) String assignment_ids) {
-        return list(assignment_ids);
+    public ResponseEntity<?> listSlash(
+            @RequestParam(required = false) String assignment_ids,
+            @RequestParam(required = false) Long student_id) {
+        return list(assignment_ids, student_id);
+    }
+
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody SubmissionCreateRequest req) {
+        Submission s = new Submission();
+        s.setStudentId(req.studentId());
+        s.setAssignmentId(req.assignmentId());
+        s.setContent(req.content());
+        s.setFileUrl(req.fileUrl());
+        s.setFileName(req.fileName());
+        s.setStatus("submitted");
+        s.setSubmittedAt(LocalDateTime.now());
+        submissionRepository.save(s);
+        return ResponseEntity.ok(s);
+    }
+
+    @PostMapping("/")
+    public ResponseEntity<?> createSlash(@RequestBody SubmissionCreateRequest req) {
+        return create(req);
     }
 
     @PostMapping("/{id}/update/")

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Megaphone,
@@ -8,10 +8,11 @@ import {
   MessageSquare,
   Heart,
   Loader2,
+  Calendar,
 } from "lucide-react";
 
 import { LecturerBottomNav } from "@/components/layout/LecturerBottomNav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,8 +26,21 @@ interface Announcement {
   audience: string;
   views: number;
   likes: number;
-  comments: number;
+  commentsCount: number;
   priority: "high" | "normal" | "low";
+}
+
+interface EngagementData {
+  views: number;
+  likes: number;
+  comments_count: number;
+  has_liked: boolean;
+  comments: Array<{
+    id: number;
+    student_name: string;
+    content: string;
+    created_at: string;
+  }>;
 }
 
 const rise = {
@@ -38,31 +52,30 @@ const rise = {
   }),
 };
 
-interface StudentEngagement {
-  views: Array<{ student_id: string; student_name: string; viewed_at: string }>;
-  likes: Array<{
-    student_id: string;
-    student_name: string;
-    created_at: string;
-  }>;
-  comments: Array<{
-    student_id: string;
-    student_name: string;
-    content: string;
-    created_at: string;
-  }>;
-}
+const buildGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const todayLabel = new Date().toLocaleDateString(undefined, {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
 
 export default function LecturerAnnouncements() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [engagementDetails, setEngagementDetails] =
-    useState<StudentEngagement | null>(null);
+  const [viewEngagement, setViewEngagement] = useState<EngagementData | null>(
+    null,
+  );
   const [loadingEngagement, setLoadingEngagement] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -86,7 +99,7 @@ export default function LecturerAnnouncements() {
         `/api/announcements/?author_id=${encodeURIComponent(user.uid)}`,
       );
 
-      const transformedAnnouncements = data.map((ann) => ({
+      const transformed = data.map((ann) => ({
         id: ann.id,
         title: ann.title,
         content: ann.content,
@@ -96,10 +109,32 @@ export default function LecturerAnnouncements() {
         audience: "All Students",
         views: 0,
         likes: 0,
-        comments: 0,
+        commentsCount: 0,
         priority: ann.priority || "normal",
       }));
-      setAnnouncements(transformedAnnouncements);
+      setAnnouncements(transformed);
+
+      for (const ann of transformed) {
+        try {
+          const eng = await getBackend<EngagementData>(
+            `/api/announcements/${ann.id}/engagement?role=lecturer`,
+          );
+          setAnnouncements((prev) =>
+            prev.map((a) =>
+              a.id === ann.id
+                ? {
+                    ...a,
+                    views: eng.views,
+                    likes: eng.likes,
+                    commentsCount: eng.comments_count,
+                  }
+                : a,
+            ),
+          );
+        } catch {
+          // keep defaults
+        }
+      }
     } catch (error) {
       console.error("Error fetching announcements:", error);
     } finally {
@@ -111,19 +146,19 @@ export default function LecturerAnnouncements() {
     totalAnnouncements: announcements.length,
     totalViews: announcements.reduce((acc, a) => acc + a.views, 0),
     totalLikes: announcements.reduce((acc, a) => acc + a.likes, 0),
-    totalComments: announcements.reduce((acc, a) => acc + a.comments, 0),
+    totalComments: announcements.reduce((acc, a) => acc + a.commentsCount, 0),
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
-        return "bg-red-500/20 text-red-700 border-red-300/30";
+        return "bg-red-500/15 text-red-600 border-red-500/30";
       case "normal":
-        return "bg-blue-500/20 text-blue-700 border-blue-300/30";
+        return "bg-blue-500/15 text-blue-600 border-blue-500/30";
       case "low":
-        return "bg-gray-500/20 text-gray-700 border-gray-300/30";
+        return "bg-muted/60 text-muted-foreground border-border/60";
       default:
-        return "bg-muted/60";
+        return "bg-muted/60 text-muted-foreground border-border/60";
     }
   };
 
@@ -134,6 +169,7 @@ export default function LecturerAnnouncements() {
       const payload = {
         course_id: formData.course_id || "",
         author_id: user.uid,
+        author_name: profile?.full_name || user?.displayName || "",
         title: formData.title,
         content: formData.content,
         priority: formData.priority,
@@ -151,7 +187,7 @@ export default function LecturerAnnouncements() {
           audience: "All Students",
           views: 0,
           likes: 0,
-          comments: 0,
+          commentsCount: 0,
           priority: created.priority || "normal",
         },
         ...current,
@@ -175,13 +211,11 @@ export default function LecturerAnnouncements() {
   const fetchEngagementDetails = async (announcementId: string) => {
     try {
       setLoadingEngagement(true);
-      setEngagementDetails({
-        views: [],
-        likes: [],
-        comments: [],
-      });
-      // Engagement data is not available in the current backend.
-      // This placeholder allows the details panel to render safely.
+      setViewEngagement(null);
+      const data = await getBackend<EngagementData>(
+        `/api/announcements/${announcementId}/engagement?role=lecturer`,
+      );
+      setViewEngagement(data);
     } catch (error) {
       console.error("Error fetching engagement details:", error);
     } finally {
@@ -205,187 +239,250 @@ export default function LecturerAnnouncements() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-28">
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -top-24 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute top-40 -right-20 h-72 w-72 rounded-full bg-teal/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-lavender/10 blur-3xl" />
+      </div>
       <main className="px-4 py-6 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
+          className="relative overflow-hidden rounded-3xl hero-gradient p-6 sm:p-8"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Megaphone className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Announcements</h1>
-                <p className="text-sm text-muted-foreground">
-                  Broadcast important messages to your class
-                </p>
-              </div>
+          <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-teal/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+          <div className="relative">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+              <Megaphone className="h-3.5 w-3.5" />
+              Announcements Center
+            </span>
+            <h1 className="mt-4 text-3xl font-display font-bold text-white sm:text-4xl">
+              {buildGreeting()}, {user?.email?.split("@")[0] || "Lecturer"}
+            </h1>
+            <p className="mt-1.5 text-sm font-medium text-white/80">
+              Broadcast important messages to your class
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                <Calendar className="h-3.5 w-3.5" />
+                {todayLabel}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-white backdrop-blur-sm">
+                <Eye className="h-3.5 w-3.5" />
+                {stats.totalViews} views
+              </span>
+              {stats.totalComments > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber px-3 py-1.5 text-navy">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {stats.totalComments} comments
+                </span>
+              )}
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber to-amber-dark px-4 py-1.5 font-semibold text-navy shadow-glow transition-transform hover:scale-[1.03]"
+              >
+                <Plus className="h-4 w-4" />
+                New Announcement
+              </button>
             </div>
-            <Button
-              className="bg-gradient-to-r from-primary to-secondary gap-2"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus className="h-4 w-4" /> New Announcement
-            </Button>
-          </div>
-
-          {/* Stats */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-            >
-              <Card className="bg-primary/10 border-primary/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Total Announcements
-                  </p>
-                  <p className="text-2xl font-bold text-primary">
-                    {stats.totalAnnouncements}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card className="bg-emerald-500/10 border-emerald-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">Total Views</p>
-                  <p className="text-2xl font-bold text-emerald-700">
-                    {stats.totalViews}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <Card className="bg-red-500/10 border-red-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">Total Likes</p>
-                  <p className="text-2xl font-bold text-red-700">
-                    {stats.totalLikes}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="bg-blue-500/10 border-blue-300/30">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Total Comments
-                  </p>
-                  <p className="text-2xl font-bold text-blue-700">
-                    {stats.totalComments}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
         </motion.div>
 
-        {/* Announcements List */}
-        <div className="space-y-3">
-          {announcements.map((announcement, i) => (
+        {/* Stats */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              label: "Total Announcements",
+              value: stats.totalAnnouncements,
+              accent: "from-primary to-secondary",
+              iconBg: "bg-primary/10 text-primary",
+              Icon: Megaphone,
+            },
+            {
+              label: "Total Views",
+              value: stats.totalViews,
+              accent: "from-teal to-emerald",
+              iconBg: "bg-teal/15 text-teal",
+              Icon: Eye,
+            },
+            {
+              label: "Total Likes",
+              value: stats.totalLikes,
+              accent: "from-red-500 to-orange-500",
+              iconBg: "bg-red-500/15 text-red-600",
+              Icon: Heart,
+            },
+            {
+              label: "Total Comments",
+              value: stats.totalComments,
+              accent: "from-blue-500 to-blue-600",
+              iconBg: "bg-blue-500/15 text-blue-600",
+              Icon: MessageSquare,
+            },
+          ].map((s, i) => (
             <motion.div
-              key={announcement.id}
-              variants={rise}
-              initial="hidden"
-              animate="visible"
-              custom={i}
+              key={s.label}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 + i * 0.05 }}
             >
-              <Card className="border-border/60 bg-card/70 backdrop-blur-lg hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge
-                            className={getPriorityColor(announcement.priority)}
-                          >
-                            {announcement.priority}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {announcement.date}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                          {announcement.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {announcement.content}
-                        </p>
-                        <Badge variant="outline">{announcement.audience}</Badge>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setViewingId(announcement.id);
-                            fetchEngagementDetails(announcement.id);
-                          }}
-                          title="View announcement details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600"
-                          onClick={() =>
-                            handleDeleteAnnouncement(announcement.id)
-                          }
-                          disabled={deletingId === announcement.id}
-                          title="Delete announcement"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              <Card className="overflow-hidden border-border/60 bg-card/70 backdrop-blur-lg">
+                <div className={`h-1 bg-gradient-to-r ${s.accent}`} />
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {s.label}
+                      </p>
+                      <p className="mt-1 text-3xl font-bold text-foreground">
+                        {s.value}
+                      </p>
                     </div>
-
-                    {/* Engagement Stats */}
-                    <div className="flex gap-4 pt-3 border-t border-border/60">
-                      <div className="flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {announcement.views} views
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Heart className="h-4 w-4 text-red-500" />
-                        <span className="text-sm text-muted-foreground">
-                          {announcement.likes} likes
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm text-muted-foreground">
-                          {announcement.comments} comments
-                        </span>
-                      </div>
+                    <div className={`rounded-xl p-2.5 ${s.iconBg}`}>
+                      <s.Icon className="h-5 w-5" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
           ))}
+        </div>
+
+        {/* Announcements List */}
+        <div className="space-y-3">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl py-16 text-muted-foreground">
+              <div className="rounded-xl bg-primary/10 p-3">
+                <Megaphone className="h-6 w-6 animate-pulse text-primary" />
+              </div>
+              <p className="text-sm font-medium">Loading announcements...</p>
+            </div>
+          ) : announcements.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/60 bg-card/50 py-16 text-center"
+            >
+              <div className="rounded-2xl bg-primary/10 p-4">
+                <Megaphone className="h-8 w-8 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground">
+                  No announcements yet
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Publish your first announcement to reach your students
+                </p>
+              </div>
+              <Button
+                className="mt-2 bg-gradient-to-r from-amber to-amber-dark font-semibold text-navy shadow-glow hover:opacity-90"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus className="h-4 w-4" /> Create Announcement
+              </Button>
+            </motion.div>
+          ) : (
+            announcements.map((announcement, i) => (
+              <motion.div
+                key={announcement.id}
+                variants={rise}
+                initial="hidden"
+                animate="visible"
+                custom={i}
+              >
+                <Card className="overflow-hidden border-border/60 bg-card/70 backdrop-blur-lg transition-shadow hover:shadow-lg">
+                  <div
+                    className={`h-1 ${
+                      announcement.priority === "high"
+                        ? "bg-gradient-to-r from-red-500 to-orange-500"
+                        : announcement.priority === "low"
+                          ? "bg-muted"
+                          : "bg-gradient-to-r from-blue-500 to-blue-600"
+                    }`}
+                  />
+                  <CardContent className="pt-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-1 gap-3">
+                        <div className="shrink-0 rounded-xl bg-lavender/15 p-2.5">
+                          <Megaphone className="h-5 w-5 text-lavender" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              className={getPriorityColor(
+                                announcement.priority,
+                              )}
+                            >
+                              {announcement.priority}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {announcement.date}
+                            </span>
+                          </div>
+                          <h3 className="mt-1.5 text-lg font-semibold text-foreground">
+                            {announcement.title}
+                          </h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {announcement.content}
+                          </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Eye className="h-4 w-4 text-blue-600" />
+                              {announcement.views} views
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <Heart className="h-4 w-4 text-red-500" />
+                              {announcement.likes} likes
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <MessageSquare className="h-4 w-4 text-teal" />
+                              {announcement.commentsCount} comments
+                            </span>
+                            <Badge variant="outline">
+                              {announcement.audience}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 border-blue-500/30 text-blue-600 hover:bg-blue-500/10"
+                          onClick={() => {
+                            setViewingId(announcement.id);
+                            fetchEngagementDetails(announcement.id);
+                          }}
+                          title="View engagement details"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Details
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 border-red-500/30 text-red-600 hover:bg-red-500/10"
+                          onClick={() =>
+                            handleDeleteAnnouncement(announcement.id)
+                          }
+                          disabled={deletingId === announcement.id}
+                          title="Delete announcement"
+                        >
+                          {deletingId === announcement.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {/* Create Announcement Modal */}
@@ -482,7 +579,7 @@ export default function LecturerAnnouncements() {
                   disabled={
                     isPublishing || !formData.title || !formData.content
                   }
-                  className="flex-1 bg-gradient-to-r from-primary to-secondary"
+                  className="flex-1 bg-gradient-to-r from-amber to-amber-dark font-semibold text-navy shadow-glow hover:opacity-90"
                 >
                   {isPublishing ? "Publishing..." : "Publish"}
                 </Button>
@@ -491,7 +588,7 @@ export default function LecturerAnnouncements() {
           </motion.div>
         )}
 
-        {/* View Announcement Modal */}
+        {/* View Announcement Modal - Lecturer sees all comments */}
         {viewingId && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -530,22 +627,24 @@ export default function LecturerAnnouncements() {
                       </p>
                     </div>
 
+                    {/* Impression counts */}
                     <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border/60">
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-emerald-600">
-                          {announcement.views}
+                        <p className="text-2xl font-bold text-emerald">
+                          {viewEngagement?.views ?? announcement.views}
                         </p>
                         <p className="text-xs text-muted-foreground">Views</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-red-600">
-                          {announcement.likes}
+                          {viewEngagement?.likes ?? announcement.likes}
                         </p>
                         <p className="text-xs text-muted-foreground">Likes</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-blue-600">
-                          {announcement.comments}
+                          {viewEngagement?.comments_count ??
+                            announcement.commentsCount}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Comments
@@ -553,119 +652,58 @@ export default function LecturerAnnouncements() {
                       </div>
                     </div>
 
-                    {/* Engagement Details */}
+                    {/* All student comments */}
                     {loadingEngagement ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
                       </div>
-                    ) : engagementDetails ? (
-                      <div className="space-y-4 pt-4 border-t border-border/60">
-                        {/* Views */}
-                        {engagementDetails.views.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                              <Eye className="h-4 w-4 text-emerald-600" />
-                              Students who viewed (
-                              {engagementDetails.views.length})
-                            </h3>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                              {engagementDetails.views.map((view, idx) => (
-                                <div
-                                  key={idx}
-                                  className="text-xs flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg"
-                                >
-                                  <span className="font-medium">
-                                    {view.student_name}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {new Date(view.viewed_at).toLocaleString()}
-                                  </span>
-                                </div>
-                              ))}
+                    ) : viewEngagement &&
+                      viewEngagement.comments.length > 0 ? (
+                      <div className="space-y-3 pt-4 border-t border-border/60">
+                        <h3 className="font-semibold text-sm flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-blue-600" />
+                          Student Comments (
+                          {viewEngagement.comments.length})
+                        </h3>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {viewEngagement.comments.map((comment) => (
+                            <div
+                              key={comment.id}
+                              className="px-3 py-2 bg-muted/50 rounded-lg space-y-1"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium">
+                                  {comment.student_name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(
+                                    comment.created_at,
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-sm text-foreground">
+                                {comment.content}
+                              </p>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Likes */}
-                        {engagementDetails.likes.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                              <Heart className="h-4 w-4 text-red-600" />
-                              Students who liked (
-                              {engagementDetails.likes.length})
-                            </h3>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                              {engagementDetails.likes.map((like, idx) => (
-                                <div
-                                  key={idx}
-                                  className="text-xs flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg"
-                                >
-                                  <span className="font-medium">
-                                    {like.student_name}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {new Date(like.created_at).toLocaleString()}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Comments */}
-                        {engagementDetails.comments.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                              <MessageSquare className="h-4 w-4 text-blue-600" />
-                              Comments ({engagementDetails.comments.length})
-                            </h3>
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                              {engagementDetails.comments.map(
-                                (comment, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="px-3 py-2 bg-muted/50 rounded-lg space-y-1"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-medium">
-                                        {comment.student_name}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(
-                                          comment.created_at,
-                                        ).toLocaleString()}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-foreground">
-                                      {comment.content}
-                                    </p>
-                                  </div>
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {engagementDetails.views.length === 0 &&
-                          engagementDetails.likes.length === 0 &&
-                          engagementDetails.comments.length === 0 && (
-                            <div className="text-center py-4 text-sm text-muted-foreground">
-                              No student engagement yet
-                            </div>
-                          )}
+                          ))}
+                        </div>
+                      </div>
+                    ) : viewEngagement ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground border-t border-border/60">
+                        No student comments yet
                       </div>
                     ) : null}
 
                     <div className="flex gap-2 pt-4">
                       <Button
-                        onClick={() => {
-                          setViewingId(null);
-                          setEngagementDetails(null);
-                        }}
-                        className="flex-1 bg-gradient-to-r from-primary to-secondary"
-                      >
-                        Close
-                      </Button>
+                      onClick={() => {
+                        setViewingId(null);
+                        setViewEngagement(null);
+                      }}
+                      className="flex-1 bg-gradient-to-r from-amber to-amber-dark font-semibold text-navy shadow-glow hover:opacity-90"
+                    >
+                      Close
+                    </Button>
                     </div>
                   </>
                 ) : null;
