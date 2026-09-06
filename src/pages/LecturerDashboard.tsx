@@ -166,11 +166,23 @@ export default function LecturerDashboard() {
         courseCount = (coursesData || []).length;
       }
 
+      let students = 0;
+      let pendingMarks = 0;
+      let submissions = 0;
+      try {
+        const summary = await getBackend<any>("/api/lecturer/summary/?lecturer_id=" + lecturerUid, true);
+        students = Number(summary?.students_count) || 0;
+        pendingMarks = Number(summary?.pending_marks) || 0;
+        submissions = Number(summary?.submissions_this_week) || 0;
+      } catch (summaryError) {
+        console.error("Error loading lecturer summary:", summaryError);
+      }
+
       setStats({
         courses: courseCount,
-        students: 0,
-        pendingMarks: 0,
-        submissions: 0,
+        students,
+        pendingMarks,
+        submissions,
       });
     } catch (error) {
       console.error("Error loading stats:", error);
