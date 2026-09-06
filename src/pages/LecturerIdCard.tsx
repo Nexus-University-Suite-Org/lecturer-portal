@@ -71,6 +71,14 @@ interface LecturerCardData {
 const toMonthYear = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("") || "NU";
+
 function buildFallback(profile: any, user: any): LecturerCardData {
   return {
     name:
@@ -179,12 +187,12 @@ export default function LecturerIdCard() {
   const handlePrint = () => window.print();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-24 md:pb-10">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-24 md:pb-10 print:bg-white print:p-0">
 
 
-      <main className="container py-8">
+      <main className="container py-8 print:p-0 print:max-w-none">
         <div className="max-w-5xl mx-auto space-y-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
             <div className="space-y-1">
               <Badge className="w-fit" variant="secondary">
                 Digital + Print Ready
@@ -203,7 +211,7 @@ export default function LecturerIdCard() {
             </Button>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 print:grid-cols-2 items-stretch">
+          <div className="grid md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-4 items-stretch">
             {/* Front Side */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -235,17 +243,9 @@ export default function LecturerIdCard() {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    {lecturer.avatar ? (
-                      <img
-                        src={lecturer.avatar}
-                        alt={lecturer.name}
-                        className="h-20 w-20 rounded-2xl object-cover ring-2 ring-white/40 bg-white"
-                      />
-                    ) : (
-                      <div className="h-20 w-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white text-3xl font-bold">
-                        {lecturer.name.charAt(0)}
-                      </div>
-                    )}
+                    <div className="h-20 w-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white text-2xl font-bold tracking-wide">
+                      {getInitials(lecturer.name)}
+                    </div>
                     <div className="space-y-1">
                       <p className="text-lg font-semibold leading-tight">
                         {lecturer.name}
@@ -366,7 +366,9 @@ export default function LecturerIdCard() {
         </div>
       </main>
 
-      <LecturerBottomNav />
+      <div className="print:hidden">
+        <LecturerBottomNav />
+      </div>
     </div>
   );
 }

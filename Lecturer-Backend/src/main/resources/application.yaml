@@ -49,4 +49,6 @@ logging:
     org.springframework.web.multipart: DEBUG
 
 set-password:
-  secret: ${SET_PASSWORD_SECRET:reg-backend-jwt-secret-key-2026-secure-long-enough-for-hmac}
+  # Must match REG-Backend's JWT_SECRET (registrar-hub/.env) so registrar-issued
+  # set-password tokens verify correctly here.
+  secret: ${SET_PASSWORD_SECRET:reg-backend-dev-secret-key-change-in-production}
