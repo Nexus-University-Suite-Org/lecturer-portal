@@ -15,6 +15,7 @@ import {
   Target,
   User,
   Video,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -219,6 +220,23 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Navigation */}
           <SidebarNav />
+
+          {/* Sign Out */}
+          <div className="border-t border-border p-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleSignOut}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200 ${
+                collapsed ? "justify-center" : ""
+              }`}
+            >
+              <LogOut className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="whitespace-nowrap">Sign Out</span>
+              )}
+            </Button>
+          </div>
         </motion.div>
 
         {/* Mobile sidebar overlay */}
@@ -281,6 +299,22 @@ export function AppLayout({ children }: AppLayoutProps) {
 
                   {/* Navigation */}
                   <SidebarNav isMobile />
+
+                  {/* Sign Out */}
+                  <div className="border-t border-border p-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200"
+                    >
+                      <LogOut className="h-5 w-5 flex-shrink-0" />
+                      <span className="whitespace-nowrap">Sign Out</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </motion.div>
