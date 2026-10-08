@@ -1,8 +1,11 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-const NU_API_BASE_URL =
+export const NU_API_BASE_URL =
   import.meta.env.VITE_NU_API_BASE_URL || "http://localhost:8082";
+
+export const REG_API_BASE_URL =
+  import.meta.env.VITE_REG_API_BASE_URL || "http://localhost:8082";
 
 const AUTH_TOKEN_KEY = "nexus-auth-token";
 
@@ -108,6 +111,37 @@ export async function postNuBackend<T>(
   auth: boolean = false,
 ): Promise<T> {
   const response = await fetch(`${NU_API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth ? authHeaders() : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response) as Promise<T>;
+}
+
+// Registrar backend (REG-Backend on Railway) helpers for registrar features.
+export async function getRegBackend<T>(
+  path: string,
+  auth: boolean = false,
+): Promise<T> {
+  const response = await fetch(`${REG_API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(auth ? authHeaders() : {}),
+    },
+  });
+  return handleResponse(response) as Promise<T>;
+}
+
+export async function postRegBackend<T>(
+  path: string,
+  payload: unknown,
+  auth: boolean = false,
+): Promise<T> {
+  const response = await fetch(`${REG_API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
