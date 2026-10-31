@@ -3,10 +3,11 @@ package com.nexus.lecturerbackend.controller;
 import com.nexus.lecturerbackend.dto.AuthChangePasswordRequest;
 import com.nexus.lecturerbackend.dto.AuthLoginRequest;
 import com.nexus.lecturerbackend.dto.AuthLoginResponse;
-import com.nexus.lecturerbackend.configuration.JwtUtil;
+import com.nexus.lecturerbackend.configuration.NexusIdentityTokenVerifier;
 import com.nexus.lecturerbackend.service.AuthService;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,11 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
-    private final JwtUtil jwtUtil;
+    private final NexusIdentityTokenVerifier identityTokenVerifier;
 
-    public AuthController(AuthService authService, JwtUtil jwtUtil) {
+    public AuthController(AuthService authService, NexusIdentityTokenVerifier identityTokenVerifier) {
         this.authService = authService;
-        this.jwtUtil = jwtUtil;
+        this.identityTokenVerifier = identityTokenVerifier;
     }
 
     @PostMapping("/student/login")
@@ -36,19 +37,22 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/lecturer/sso")
+    public ResponseEntity<?> sso(@RequestHeader("Authorization") String authorization) {
+        try {
+            return ResponseEntity.ok(authService.loginWithSso(
+                    identityTokenVerifier.verifiedLecturerEmail(authorization)));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.status(401).body(Map.of("detail", exception.getMessage()));
+        }
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
             @RequestBody AuthChangePasswordRequest request,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @AuthenticationPrincipal Long userId) {
         try {
-            Long uid = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                if (jwtUtil.isValid(token)) {
-                    uid = jwtUtil.getUserId(token);
-                }
-            }
-            authService.changePassword(uid != null ? uid : request.uid(),
+            authService.changePassword(userId,
                     request.currentPassword(), request.newPassword());
             return ResponseEntity.ok(Map.of("ok", true, "message", "Password updated successfully"));
         } catch (RuntimeException e) {

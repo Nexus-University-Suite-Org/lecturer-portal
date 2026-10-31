@@ -4,6 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import {
+  AuthProvider as IdentityAuthProvider,
+  useNexusAuth,
+} from "@/lib/nexus-auth";
+import { IdentitySessionBridge } from "@/lib/nexus-auth/IdentitySessionBridge";
 import { SiteSettingsProvider } from "@/contexts/SiteSettingsContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "./pages/Auth";
@@ -33,11 +38,18 @@ import NotFound from "./pages/NotFound";
 import LecturerIdCard from "./pages/LecturerIdCard";
 
 const queryClient = new QueryClient();
+const IDENTITY_ISSUER =
+  import.meta.env.VITE_IDENTITY_ISSUER ?? "http://localhost:9000";
 
 function LecturerRoute({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth();
+  const { status: identityStatus } = useNexusAuth();
 
-  if (loading) {
+  if (
+    loading ||
+    (identityStatus === "authenticated" &&
+      !localStorage.getItem("nexus-auth-token"))
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-8 w-8 border-4 border-secondary border-t-transparent rounded-full animate-spin" />
@@ -239,11 +251,26 @@ const App = () => (
           v7_relativeSplatPath: true,
         }}
       >
-        <AuthProvider>
-          <SiteSettingsProvider>
-            <AppRoutes />
-          </SiteSettingsProvider>
-        </AuthProvider>
+        <IdentityAuthProvider
+          config={{
+            issuer: IDENTITY_ISSUER,
+            clientId: "nexus-lecturer",
+            redirectPath: "/auth",
+            defaultReturnTo: "/auth",
+          }}
+          fallback={
+            <div className="min-h-screen flex items-center justify-center">
+              Checking your sign-in...
+            </div>
+          }
+        >
+          <AuthProvider>
+            <IdentitySessionBridge />
+            <SiteSettingsProvider>
+              <AppRoutes />
+            </SiteSettingsProvider>
+          </AuthProvider>
+        </IdentityAuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
