@@ -44,6 +44,18 @@ public class AuthService {
         if (lecturer.getPasswordHash() == null || !passwordEncoder.matches(password, lecturer.getPasswordHash())) {
             throw new RuntimeException("Invalid email or password");
         }
+        return createLoginResponse(lecturer);
+    }
+
+    @Transactional
+    public AuthLoginResponse loginWithSso(String email) {
+        Lecturer lecturer = lecturerRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No lecturer account matches this identity"));
+        return createLoginResponse(lecturer);
+    }
+
+    private AuthLoginResponse createLoginResponse(Lecturer lecturer) {
         String token = jwtUtil.generateToken(lecturer.getId(), lecturer.getEmail(), "LECTURER");
         return new AuthLoginResponse(
                 token,

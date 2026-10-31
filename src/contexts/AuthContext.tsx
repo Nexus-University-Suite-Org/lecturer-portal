@@ -51,6 +51,9 @@ interface AuthContextType {
     identifier: string,
     password: string,
   ) => Promise<{ error: Error | null; user?: User; profile?: Profile | null }>;
+  signInWithSso: (
+    identityToken: string,
+  ) => Promise<{ error: Error | null; user?: User; profile?: Profile | null }>;
   signOut: () => Promise<void>;
   generateOTP: (
     email: string,
@@ -351,6 +354,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signIn(identifier, password);
   };
 
+  const signInWithSso = async (
+    identityToken: string,
+  ): Promise<{
+    error: Error | null;
+    user?: User;
+    profile?: Profile | null;
+  }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/lecturer/sso`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${identityToken}` },
+      });
+      const data = (await response.json().catch(() => null)) as
+        | NapStudentLoginResponse
+        | null;
+      if (!response.ok || !data?.user || !data.profile || !data.token) {
+        throw new Error(
+          (data as { detail?: string } | null)?.detail ??
+            `Single sign-on failed (HTTP ${response.status})`,
+        );
+      }
+
+      const user: User = {
+        uid: String(data.user.id),
+        email: data.user.email,
+        displayName: data.user.fullName ?? data.profile.fullName ?? data.user.email,
+      };
+      const profile: Profile = {
+        id: String(data.profile.applicationId ?? data.user.id),
+        full_name: data.profile.fullName ?? user.displayName ?? "",
+        email: user.email ?? "",
+        avatar_url: null,
+        student_number: null,
+        registration_number: null,
+        department: data.profile.department ?? data.profile.assignedProgramme ?? null,
+        college: data.profile.college ?? null,
+        programme: data.profile.programme ?? null,
+        phone: data.profile.phoneNumber ?? null,
+        phone_number: data.profile.phoneNumber ?? null,
+        bio: null,
+        role: "lecturer",
+      };
+
+      saveToken(data.token);
+      saveSession(user, profile);
+      setUser(user);
+      setSession({ user });
+      setProfile(profile);
+      return { error: null, user, profile };
+    } catch (error: unknown) {
+      return {
+        error: error instanceof Error ? error : new Error(String(error)),
+      };
+    }
+  };
+
   const resetPassword = async (
     identifier: string,
     newPassword: string,
@@ -368,6 +427,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    window.dispatchEvent(new Event("nexus-sso-signout"));
     try {
       await postJson<{ success: boolean }>("/api/auth/logout/", {});
     } catch {
@@ -389,6 +449,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         signIn,
         signInWithStudentId,
+        signInWithSso,
         signOut,
         generateOTP,
         verifyOTP,
