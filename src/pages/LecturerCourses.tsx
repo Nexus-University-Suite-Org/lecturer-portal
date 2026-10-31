@@ -142,7 +142,7 @@ export default function LecturerCourses() {
           );
           const profileMap: Record<string, StudentProfile> = {};
           (allProfiles || []).forEach((p: any) => {
-            const uid = String(p.user_id);
+            const uid = String(p.id);
             if (uniqueStudentIds.includes(uid)) {
               profileMap[uid] = {
                 id: uid,

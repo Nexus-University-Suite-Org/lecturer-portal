@@ -18,7 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBackend, getNuBackend } from "@/lib/backendApi";
+import {
+  API_BASE_URL,
+  REG_API_BASE_URL,
+  getBackend,
+  getRegBackend,
+} from "@/lib/backendApi";
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between text-[11px] sm:text-xs text-muted-foreground border-b border-border/60 py-1 last:border-b-0">
@@ -126,11 +131,11 @@ function compose(
     campus: core?.college || fallback.campus,
     phone:
       reg?.phone || core?.phone_number || core?.office_phone || fallback.phone,
-    avatar: reg?.avatar_url
-      ? `http://localhost:8082${reg.avatar_url}`
-      : core?.avatar_url
-        ? `http://localhost:8084${core.avatar_url}`
-        : null,
+avatar: reg?.avatar_url
+        ? `${REG_API_BASE_URL}${reg.avatar_url}`
+        : core?.avatar_url
+          ? `${API_BASE_URL}${core.avatar_url}`
+          : null,
     status: reg?.status || fallback.status,
   };
 }
@@ -160,9 +165,9 @@ export default function LecturerIdCard() {
       }
 
       try {
-        const res = await getNuBackend<{ data?: RegLecturer[] }>(
-          "/api/profiles?role=lecturer",
-        );
+const res = await getRegBackend<{ data?: RegLecturer[] }>(
+            "/api/profiles?role=lecturer",
+          );
         const list = res?.data ?? [];
         reg =
           list.find(
